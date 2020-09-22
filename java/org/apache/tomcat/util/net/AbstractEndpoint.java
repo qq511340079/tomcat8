@@ -1102,10 +1102,12 @@ public abstract class AbstractEndpoint<S> {
 
     public void init() throws Exception {
         if (bindOnInit) {
+            // socket绑定端口
             bind();
             bindState = BindState.BOUND_ON_INIT;
         }
         if (this.domain != null) {
+            // 注册MBean
             // Register endpoint (as ThreadPool - historical name)
             oname = new ObjectName(domain + ":type=ThreadPool,name=\"" + getName() + "\"");
             Registry.getRegistry(null, null).registerComponent(this, oname, null);

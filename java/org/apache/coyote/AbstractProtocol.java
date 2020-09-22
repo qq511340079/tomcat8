@@ -561,6 +561,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         }
 
         if (oname == null) {
+            // 注册MBean
             // Component not pre-registered so register it
             oname = createObjectName();
             if (oname != null) {
@@ -569,6 +570,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         }
 
         if (this.domain != null) {
+            // 注册MBean
             rgOname = new ObjectName(domain + ":type=GlobalRequestProcessor,name=" + getName());
             Registry.getRegistry(null, null).registerComponent(
                     getHandler().getGlobal(), rgOname, null);
@@ -577,7 +579,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         String endpointName = getName();
         endpoint.setName(endpointName.substring(1, endpointName.length()-1));
         endpoint.setDomain(domain);
-
+        // 初始化socket
         endpoint.init();
     }
 

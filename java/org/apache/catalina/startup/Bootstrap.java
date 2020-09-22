@@ -499,8 +499,9 @@ public final class Bootstrap {
             } else if (command.equals("start")) {
                 // 调用Catalina实例的setAwait方法
                 daemon.setAwait(true);
-                // 调用Catalina实例的load方法
+                // 调用Catalina实例的load方法，解析server.xml并初始化Server
                 daemon.load(args);
+                // 调用Catalina实例的start方法
                 daemon.start();
                 if (null == daemon.getServer()) {
                     System.exit(1);

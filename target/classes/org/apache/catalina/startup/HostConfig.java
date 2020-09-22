@@ -313,6 +313,7 @@ public class HostConfig implements LifecycleListener {
         if (event.getType().equals(Lifecycle.PERIODIC_EVENT)) {
             check();
         } else if (event.getType().equals(Lifecycle.BEFORE_START_EVENT)) {
+            // 创建appBase和xmlBase目录
             beforeStart();
         } else if (event.getType().equals(Lifecycle.START_EVENT)) {
             start();
@@ -1538,6 +1539,7 @@ public class HostConfig implements LifecycleListener {
 
 
     public void beforeStart() {
+        // 创建appBase目录和xmlBase目录
         if (host.getCreateDirs()) {
             File[] dirs = new File[] {host.getAppBaseFile(),host.getConfigBaseFile()};
             for (int i=0; i<dirs.length; i++) {

@@ -209,6 +209,7 @@ public class Connector extends LifecycleMBeanBase  {
 
     /**
      * A Set of methods determined by {@link #parseBodyMethods}.
+     * Http请求哪些method解析body，默认POST
      */
     protected HashSet<String> parseBodyMethodsSet;
 
@@ -229,12 +230,14 @@ public class Connector extends LifecycleMBeanBase  {
 
     /**
      * Coyote protocol handler.
+     * Connector的协议处理器，解析server.xml时设置
      */
     protected final ProtocolHandler protocolHandler;
 
 
     /**
      * Coyote adapter.
+     * // 通过适配器模式实现了Connector与Mapper、Container的解耦
      */
     protected Adapter adapter = null;
 
@@ -965,15 +968,17 @@ public class Connector extends LifecycleMBeanBase  {
 
     @Override
     protected void initInternal() throws LifecycleException {
-
+        // 注册MBean
         super.initInternal();
 
         // Initialize adapter
+        // 创建适配器实例
         adapter = new CoyoteAdapter(this);
         protocolHandler.setAdapter(adapter);
 
         // Make sure parseBodyMethodsSet has a default
         if (null == parseBodyMethodsSet) {
+            // 设置parseBodyMethodsSet默认值
             setParseBodyMethods(getParseBodyMethods());
         }
 
@@ -993,6 +998,7 @@ public class Connector extends LifecycleMBeanBase  {
         }
 
         try {
+            // 初始化ProtocolHandler
             protocolHandler.init();
         } catch (Exception e) {
             throw new LifecycleException(

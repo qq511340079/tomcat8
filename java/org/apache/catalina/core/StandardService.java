@@ -95,12 +95,14 @@ public class StandardService extends LifecycleMBeanBase implements Service {
 
     /**
      * Mapper.
+     * 维护容器映射信息，将请求地址映射到具体的容器
      */
     protected final Mapper mapper = new Mapper();
 
 
     /**
      * Mapper listener.
+     * 注册到各个组件上，监听容器组件状态变更事件，注册或取消对应的容器映射信息
      */
     protected final MapperListener mapperListener = new MapperListener(this);
 
@@ -527,10 +529,11 @@ public class StandardService extends LifecycleMBeanBase implements Service {
      */
     @Override
     protected void initInternal() throws LifecycleException {
-
+        // 注册MBean
         super.initInternal();
 
         if (engine != null) {
+            // 初始化engine
             engine.init();
         }
 
@@ -546,6 +549,7 @@ public class StandardService extends LifecycleMBeanBase implements Service {
         mapperListener.init();
 
         // Initialize our defined Connectors
+        // 初始化Connector
         synchronized (connectorsLock) {
             for (Connector connector : connectors) {
                 try {

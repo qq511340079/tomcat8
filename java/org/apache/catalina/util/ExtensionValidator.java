@@ -170,6 +170,7 @@ public final class ExtensionValidator {
      * @throws IOException Error reading JAR file
      */
     public static void addSystemResource(File jarFile) throws IOException {
+        // 将jar文件中含有manifest文件的添加到containerManifestResources
         try (InputStream is = new FileInputStream(jarFile)) {
             Manifest manifest = getManifest(is);
             if (manifest != null) {

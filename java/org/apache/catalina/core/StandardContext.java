@@ -2286,12 +2286,15 @@ public class StandardContext extends ContainerBase
 
 
     /**
+     * 获取ServletContext
+     *
      * @return the servlet context for which this Context is a facade.
      */
     @Override
     public ServletContext getServletContext() {
 
         if (context == null) {
+            // 创建ApplicationContext
             context = new ApplicationContext(this);
             if (altDDName != null)
                 context.setAttribute(Globals.ALT_DD_ATTR,altDDName);
@@ -3339,7 +3342,7 @@ public class StandardContext extends ContainerBase
         } else {
             wrapper = new StandardWrapper();
         }
-
+        // 添加wrapper的LifecycleListener
         synchronized (wrapperLifecyclesLock) {
             for (int i = 0; i < wrapperLifecycles.length; i++) {
                 try {
@@ -3354,7 +3357,7 @@ public class StandardContext extends ContainerBase
                 }
             }
         }
-
+        // 添加wrapper的ContainerListener
         synchronized (wrapperListenersLock) {
             for (int i = 0; i < wrapperListeners.length; i++) {
                 try {

@@ -43,11 +43,12 @@ public class NioSelectorPool {
 
     private static final Log log = LogFactory.getLog(NioSelectorPool.class);
 
+    // 是否共享Selector
     protected static final boolean SHARED =
         Boolean.parseBoolean(System.getProperty("org.apache.tomcat.util.net.NioSelectorShared", "true"));
 
     protected NioBlockingSelector blockingSelector;
-
+    // 共享的Selector
     protected volatile Selector SHARED_SELECTOR;
 
     protected int maxSelectors = 200;
@@ -63,6 +64,7 @@ public class NioSelectorPool {
         if (SHARED && SHARED_SELECTOR == null) {
             synchronized ( NioSelectorPool.class ) {
                 if ( SHARED_SELECTOR == null )  {
+                    // 创建共享的Selector处理servlet的读写
                     SHARED_SELECTOR = Selector.open();
                     log.info("Using a shared selector for servlet write/read");
                 }
@@ -126,7 +128,9 @@ public class NioSelectorPool {
     }
 
     public void open() throws IOException {
+        // 设置标识为已启动
         enabled = true;
+        //获取共享的Selector
         getSharedSelector();
         if (SHARED) {
             blockingSelector = new NioBlockingSelector();

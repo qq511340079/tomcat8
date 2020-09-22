@@ -276,6 +276,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
      * children associated with this container.
      */
     private int startStopThreads = 1;
+    // 处理START或者STOP事件的线程池，比如部署web应用
     protected ThreadPoolExecutor startStopExecutor;
 
 
@@ -895,6 +896,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
 
     @Override
     protected void initInternal() throws LifecycleException {
+        // 创建线程池
         BlockingQueue<Runnable> startStopQueue = new LinkedBlockingQueue<>();
         startStopExecutor = new ThreadPoolExecutor(
                 getStartStopThreadsInternal(),

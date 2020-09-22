@@ -122,7 +122,7 @@ public class HostRuleSet extends RuleSetBase {
                             "org.apache.catalina.LifecycleListener");
 
         digester.addRuleSet(new RealmRuleSet(prefix + "Host/"));
-        // 解析Server/Service/Engine/Host/Valve节点，创建责任链中的处理器
+        // 解析Server/Service/Engine/Host/Valve节点，创建责任链中的处理器，默认有AccessLogValve
         digester.addObjectCreate(prefix + "Host/Valve",
                                  null, // MUST be specified in the element
                                  "className");

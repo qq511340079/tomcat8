@@ -310,6 +310,7 @@ public class Catalina {
                             "setGlobalNamingResources",
                             "org.apache.catalina.deploy.NamingResourcesImpl");
         // 解析Server/Listener节点，创建server的生命周期监听器
+        // 默认有VersionLoggerListener，AprLifecycleListener，JreMemoryLeakPreventionListener，GlobalResourcesLifecycleListener，ThreadLocalLeakPreventionListener
         digester.addObjectCreate("Server/Listener",
                                  null, // MUST be specified in the element
                                  "className");
@@ -640,15 +641,20 @@ public class Catalina {
             }
         }
 
+        // 设置Server实例的Catalina
         getServer().setCatalina(this);
+        // 设置Server实例的CatalinaHome目录
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
+        // 设置Server实例的CatalinaBase目录
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
 
         // Stream redirection
+        // 设置System.out
         initStreams();
 
         // Start the new server
         try {
+            // 启动Server
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {

@@ -98,12 +98,15 @@ public abstract class LifecycleBase implements Lifecycle {
 
     @Override
     public final synchronized void init() throws LifecycleException {
+        // 组件LifecycleState必须是NEW
         if (!state.equals(LifecycleState.NEW)) {
             invalidTransition(Lifecycle.BEFORE_INIT_EVENT);
         }
 
         try {
+            // 设置组件LifecycleState为INITIALIZING，触发生命周期事件
             setStateInternal(LifecycleState.INITIALIZING, null, false);
+            // 初始化组件
             initInternal();
             setStateInternal(LifecycleState.INITIALIZED, null, false);
         } catch (Throwable t) {
@@ -122,7 +125,7 @@ public abstract class LifecycleBase implements Lifecycle {
      */
     @Override
     public final synchronized void start() throws LifecycleException {
-
+        // 不可重复start
         if (LifecycleState.STARTING_PREP.equals(state) || LifecycleState.STARTING.equals(state) ||
                 LifecycleState.STARTED.equals(state)) {
 
@@ -137,8 +140,10 @@ public abstract class LifecycleBase implements Lifecycle {
         }
 
         if (state.equals(LifecycleState.NEW)) {
+            // 组件还未初始化，则先初始化组件
             init();
         } else if (state.equals(LifecycleState.FAILED)) {
+            // 组件的状态为FAILED，则调用stop方法
             stop();
         } else if (!state.equals(LifecycleState.INITIALIZED) &&
                 !state.equals(LifecycleState.STOPPED)) {
@@ -351,6 +356,7 @@ public abstract class LifecycleBase implements Lifecycle {
      */
     protected synchronized void setState(LifecycleState state, Object data)
             throws LifecycleException {
+        // 子类调用setState方法需要校验组件生命周期状态的流转
         setStateInternal(state, data, true);
     }
 
@@ -360,8 +366,9 @@ public abstract class LifecycleBase implements Lifecycle {
         if (log.isDebugEnabled()) {
             log.debug(sm.getString("lifecycleBase.setState", this, state));
         }
-
+        // LifecycleBase调用此方法check为false不需要校验组件生命周期状态
         if (check) {
+            // 需要校验组件生命周期状态的流转
             // Must have been triggered by one of the abstract methods (assume
             // code in this class is correct)
             // null is never a valid state
@@ -376,6 +383,11 @@ public abstract class LifecycleBase implements Lifecycle {
             // startInternal() permits STARTING_PREP to STARTING
             // stopInternal() permits STOPPING_PREP to STOPPING and FAILED to
             // STOPPING
+            // 校验生命周期状态流转是否正确
+            // 任何状态都可以流转为FAILED
+            // STARTING_PREP可以流转为STARTING
+            // STOPPING_PREP可以流转为STOPPING
+            // FAILED可以流转为STOPPING
             if (!(state == LifecycleState.FAILED ||
                     (this.state == LifecycleState.STARTING_PREP &&
                             state == LifecycleState.STARTING) ||
@@ -387,8 +399,9 @@ public abstract class LifecycleBase implements Lifecycle {
                 invalidTransition(state.name());
             }
         }
-
+        // 更新组件的生命周期状态
         this.state = state;
+        // 触发生命周期事件
         String lifecycleEvent = state.getLifecycleEvent();
         if (lifecycleEvent != null) {
             fireLifecycleEvent(lifecycleEvent, data);

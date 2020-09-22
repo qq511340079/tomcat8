@@ -781,7 +781,7 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
      */
     @Override
     protected void startInternal() throws LifecycleException {
-
+        // 触发CONFIGURE_START_EVENT，ContextConfig监听该事件配置context
         fireLifecycleEvent(CONFIGURE_START_EVENT, null);
         setState(LifecycleState.STARTING);
 
@@ -825,7 +825,7 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
      */
     @Override
     protected void initInternal() throws LifecycleException {
-
+        // 将当前对象注册为Mbean
         super.initInternal();
 
         // Register global String cache
@@ -845,9 +845,11 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
         // Populate the extension validator with JARs from common and shared
         // class loaders
         if (getCatalina() != null) {
+            // 获取Catalina的父级类加载器，默认为SharedClassLoader
             ClassLoader cl = getCatalina().getParentClassLoader();
             // Walk the class loader hierarchy. Stop at the system class loader.
             // This will add the shared (if present) and common class loaders
+            // 遍历类加载器层级，直到SystemClassLoader，将中含有manifest文件的jar文件添加到containerManifestResources
             while (cl != null && cl != ClassLoader.getSystemClassLoader()) {
                 if (cl instanceof URLClassLoader) {
                     URL[] urls = ((URLClassLoader) cl).getURLs();
@@ -871,6 +873,7 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
             }
         }
         // Initialize our defined Services
+        // 初始化service
         for (int i = 0; i < services.length; i++) {
             services[i].init();
         }

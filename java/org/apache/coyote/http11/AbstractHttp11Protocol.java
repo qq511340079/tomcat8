@@ -61,6 +61,7 @@ public abstract class AbstractHttp11Protocol<S> extends AbstractProtocol<S> {
 
     @Override
     public void init() throws Exception {
+        // 协议升级
         for (UpgradeProtocol upgradeProtocol : upgradeProtocols) {
             configureUpgradeProtocol(upgradeProtocol);
         }

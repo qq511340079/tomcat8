@@ -204,17 +204,27 @@ public class SocketProperties {
             socket.setTcpNoDelay(tcpNoDelay.booleanValue());
     }
 
+    /**
+     * 设置ServerSocket属性
+     *
+     * @param socket
+     * @throws SocketException
+     */
     public void setProperties(ServerSocket socket) throws SocketException{
+        // tcp接收缓冲区大小
         if (rxBufSize != null)
             socket.setReceiveBufferSize(rxBufSize.intValue());
+        // 设置性能参数，可设置任意整数，数值越大，相应的参数重要性越高（连接时间，延迟，带宽）
         if (performanceConnectionTime != null && performanceLatency != null &&
                 performanceBandwidth != null)
             socket.setPerformancePreferences(
                     performanceConnectionTime.intValue(),
                     performanceLatency.intValue(),
                     performanceBandwidth.intValue());
+        // 设置soReuseAddress，端口是否可以重用，一般来说，一个端口释放后会等待两分钟之后才能再被使用，SO_REUSEADDR是让端口释放后立即就可以被再次使用。
         if (soReuseAddress != null)
             socket.setReuseAddress(soReuseAddress.booleanValue());
+        // 数据包读取超时时间
         if (soTimeout != null && soTimeout.intValue() >= 0)
             socket.setSoTimeout(soTimeout.intValue());
     }
