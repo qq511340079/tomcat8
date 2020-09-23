@@ -122,7 +122,9 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
         // LinkedHashSet to retain the order. It is the order of the
         // WebResourceSet that matters but it is simpler to retain the order
         // over all of the JARs.
+        // 使用LinkedHashSet是为了去重并且保持顺序
         HashSet<String> result = new LinkedHashSet<>();
+        // 遍历allResources，寻找符合path路径的web资源
         for (List<WebResourceSet> list : allResources) {
             for (WebResourceSet webResourceSet : list) {
                 if (!webResourceSet.getClassLoaderOnly()) {
@@ -133,6 +135,7 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
                 }
             }
         }
+        // 返回path下的所有资源文件名
         return result.toArray(new String[result.size()]);
     }
 
@@ -213,6 +216,7 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
         }
 
         if (isCachingAllowed()) {
+            // 从缓存中获取web资源
             return cache.getResource(path, useClassLoaderResources);
         } else {
             return getResourceInternal(path, useClassLoaderResources);
@@ -269,11 +273,19 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
         return result;
     }
 
+    /**
+     * 获取path对应的web资源
+     *
+     * @param path
+     * @param useClassLoaderResources
+     * @return
+     */
     protected final WebResource getResourceInternal(String path,
             boolean useClassLoaderResources) {
         WebResource result = null;
         WebResource virtual = null;
         WebResource mainEmpty = null;
+        // 从所有web资源集合中寻找path对应的web资源，默认只有代表web应用目录的DirResourceSet
         for (List<WebResourceSet> list : allResources) {
             for (WebResourceSet webResourceSet : list) {
                 if (!useClassLoaderResources &&  !webResourceSet.getClassLoaderOnly() ||
@@ -344,17 +356,27 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
         return listResources(path, true);
     }
 
+    /**
+     * 获取对应目录下的web资源
+     *
+     * @param path
+     * @param validate
+     * @return
+     */
     protected WebResource[] listResources(String path, boolean validate) {
         if (validate) {
             path = validate(path);
         }
-
+        // 获取资源path路径下的所有资源文件名
         String[] resources = list(path, false);
         WebResource[] result = new WebResource[resources.length];
+        // 遍历path路径下的所有资源文件名，将其转换成WebResource对象添加到result数组中
         for (int i = 0; i < resources.length; i++) {
+            // 判断path是否是"/"结尾
             if (path.charAt(path.length() - 1) == '/') {
                 result[i] = getResource(path + resources[i], false, false);
             } else {
+                // 获取资源对应的WebResource对象
                 result[i] = getResource(path + '/' + resources[i], false, false);
             }
         }
@@ -579,10 +601,12 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
      *                            application from starting
      */
     protected void processWebInfLib() throws LifecycleException {
+        // 获取/WEB-INF/lib目录下的web资源
         WebResource[] possibleJars = listResources("/WEB-INF/lib", false);
 
         for (WebResource possibleJar : possibleJars) {
             if (possibleJar.isFile() && possibleJar.getName().endsWith(".jar")) {
+                // 创建web应用的jar包资源集合
                 createWebResourceSet(ResourceSetType.CLASSES_JAR,
                         "/WEB-INF/classes", possibleJar.getURL(), "/");
             }
@@ -702,13 +726,14 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
     @Override
     protected void startInternal() throws LifecycleException {
         mainResources.clear();
-
+        // 创建web应用的主要资源集，也就是web应用的目录
         main = createMainResourceSet();
 
         mainResources.add(main);
-
+        // 启动web资源
         for (List<WebResourceSet> list : allResources) {
             // Skip class resources since they are started below
+            // 跳过classResources，因为下面会处理
             if (list != classResources) {
                 for (WebResourceSet webResourceSet : list) {
                     webResourceSet.start();
@@ -718,6 +743,7 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
 
         // This has to be called after the other resources have been started
         // else it won't find all the matching resources
+        // 添加WEB-INF/lib下的jar包到web资源中
         processWebInfLib();
         // Need to start the newly found resources
         for (WebResourceSet classResource : classResources) {

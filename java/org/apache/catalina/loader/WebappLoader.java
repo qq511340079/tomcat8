@@ -103,6 +103,12 @@ public class WebappLoader extends LifecycleMBeanBase
     /**
      * The "follow standard delegation model" flag that will be used to
      * configure our ClassLoader.
+     *  web应用的类加载器是否使用标准的父类委托机制
+     *  默认为false，web应用的类加载顺序为：
+     *  1.从缓存中加载
+     *  2.如果没有，从bootstrap类加载器加载
+     *  3.如果没有，从web应用类加载器加载
+     *  4.如果没有则按System类加载器 -> common类加载器 -> shared类加载器的顺序依次尝试加载
      */
     private boolean delegate = false;
 
@@ -388,14 +394,16 @@ public class WebappLoader extends LifecycleMBeanBase
 
         // Construct a class loader based on our current repositories list
         try {
-
+            // 创建web应用的类加载器
             classLoader = createClassLoader();
+            // 设置类加载器的资源
             classLoader.setResources(context.getResources());
+            //设置类加载器是否使用java标准的父类委托机制
             classLoader.setDelegate(this.delegate);
 
             // Configure our repositories
             setClassPath();
-
+            // 设置web类加载器的权限
             setPermissions();
 
             ((Lifecycle) classLoader).start();
@@ -500,6 +508,7 @@ public class WebappLoader extends LifecycleMBeanBase
 
     /**
      * Create associated classLoader.
+     * 创建web应用类加载器
      */
     private WebappClassLoaderBase createClassLoader()
         throws Exception {
@@ -521,6 +530,7 @@ public class WebappLoader extends LifecycleMBeanBase
 
     /**
      * Configure associated class loader permissions.
+     * 配置web应用类加载器的权限
      */
     private void setPermissions() {
 
@@ -566,7 +576,7 @@ public class WebappLoader extends LifecycleMBeanBase
         ServletContext servletContext = context.getServletContext();
         if (servletContext == null)
             return;
-
+        // classpath
         StringBuilder classpath = new StringBuilder();
 
         // Assemble the class path information from our class loader chain
@@ -576,7 +586,7 @@ public class WebappLoader extends LifecycleMBeanBase
             // Skip the webapp loader for now as delegation is enabled
             loader = loader.getParent();
         }
-
+        //遍历类加载器构建classpath
         while (loader != null) {
             if (!buildClassPath(classpath, loader)) {
                 break;
@@ -591,10 +601,11 @@ public class WebappLoader extends LifecycleMBeanBase
                 buildClassPath(classpath, loader);
             }
         }
-
+        // 设置classpath
         this.classpath = classpath.toString();
 
         // Store the assembled class path as a servlet context attribute
+        //将classpath保存到servletContext的属性中
         servletContext.setAttribute(Globals.CLASS_PATH_ATTR, this.classpath);
     }
 

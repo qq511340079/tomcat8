@@ -57,8 +57,9 @@ public class Cache {
     }
 
     protected WebResource getResource(String path, boolean useClassLoaderResources) {
-
+        // 判断path是否应该缓存
         if (noCache(path)) {
+            // 直接从web资源集合中寻找path对应的资源
             return root.getResourceInternal(path, useClassLoaderResources);
         }
 
@@ -201,6 +202,7 @@ public class Cache {
     private boolean noCache(String path) {
         // Don't cache classes. The class loader handles this.
         // Don't cache JARs. The ResourceSet handles this.
+        // 不缓存class文件和jar包
         if ((path.endsWith(".class") &&
                 (path.startsWith("/WEB-INF/classes/") || path.startsWith("/WEB-INF/lib/")))
                 ||

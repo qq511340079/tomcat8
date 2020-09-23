@@ -1521,9 +1521,10 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
     public void start() throws LifecycleException {
 
         state = LifecycleState.STARTING_PREP;
-
+        // 获取/WEB-INF/classes目录对应的web应用资源对象
         WebResource[] classesResources = resources.getResources("/WEB-INF/classes");
         for (WebResource classes : classesResources) {
+            // 是文件夹并且可读则添加到localRepositories
             if (classes.isDirectory() && classes.canRead()) {
                 localRepositories.add(classes.getURL());
             }

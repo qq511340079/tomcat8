@@ -331,6 +331,14 @@ public class StandardContext extends ContainerBase
     /**
      * The "follow standard delegation model" flag that will be used to
      * configure our ClassLoader.
+     *
+     *  web应用的类加载器是否使用标准的父类委托机制
+     *  默认为false，web应用的类加载顺序为：
+     *  1.从缓存中加载
+     *  2.如果没有，从bootstrap类加载器加载
+     *  3.如果没有，从web应用类加载器加载
+     *  4.如果没有则按System类加载器 -> common类加载器 -> shared类加载器的顺序依次尝试加载
+     *
      */
     private boolean delegate = false;
 
@@ -1832,15 +1840,18 @@ public class StandardContext extends ContainerBase
         Loader oldLoader = null;
         try {
             // Change components if necessary
+            // 获取web应用之前的加载器
             oldLoader = this.loader;
             if (oldLoader == loader)
                 return;
+            // 设置web应用新的加载器
             this.loader = loader;
 
             // Stop the old component if necessary
             if (getState().isAvailable() && (oldLoader != null) &&
                 (oldLoader instanceof Lifecycle)) {
                 try {
+                    // 停止之前的加载器
                     ((Lifecycle) oldLoader).stop();
                 } catch (LifecycleException e) {
                     log.error("StandardContext.setLoader: stop: ", e);
@@ -1849,10 +1860,12 @@ public class StandardContext extends ContainerBase
 
             // Start the new component if necessary
             if (loader != null)
+                // 设置web应用加载器的context
                 loader.setContext(this);
             if (getState().isAvailable() && (loader != null) &&
                 (loader instanceof Lifecycle)) {
                 try {
+                    // 启动新的web应用加载器
                     ((Lifecycle) loader).start();
                 } catch (LifecycleException e) {
                     log.error("StandardContext.setLoader: start: ", e);
@@ -2201,6 +2214,7 @@ public class StandardContext extends ContainerBase
         if (getPrivileged()) {
             return this.getClass().getClassLoader();
         } else if (parent != null) {
+            // 获取host的类加载器
             return (parent.getParentClassLoader());
         }
         return (ClassLoader.getSystemClassLoader());
@@ -4885,6 +4899,7 @@ public class StandardContext extends ContainerBase
         // Check current status in case resources were added that had already
         // been started
         if (!resources.getState().isAvailable()) {
+            // 启动web资源
             resources.start();
         }
 
@@ -5005,14 +5020,18 @@ public class StandardContext extends ContainerBase
         }
 
         // Post work directory
+        // 创建web应用的work目录
         postWorkDirectory();
 
         // Add missing components as necessary
+        // 根据需要添加缺少的组件
         if (getResources() == null) {   // (1) Required by Loader
+            // 需要加载WebResourceRoot
             if (log.isDebugEnabled())
                 log.debug("Configuring default Resources");
 
             try {
+                // 设置web应用关联的资源
                 setResources(new StandardRoot(this));
             } catch (IllegalArgumentException e) {
                 log.error(sm.getString("standardContext.resourcesInit"), e);
@@ -5020,17 +5039,22 @@ public class StandardContext extends ContainerBase
             }
         }
         if (ok) {
+            // 启动resources，读取WEB-INF/lib下的jar包到web资源集
             resourcesStart();
         }
 
         if (getLoader() == null) {
+            // web应用加载器，默认使用shared类加载器(shared类加载器默认为common类加载器)
             WebappLoader webappLoader = new WebappLoader(getParentClassLoader());
+            // 设置是否使用java的类加载委托机制
             webappLoader.setDelegate(getDelegate());
+            // 启动新的web应用加载器
             setLoader(webappLoader);
         }
 
         // An explicit cookie processor hasn't been specified; use the default
         if (cookieProcessor == null) {
+            // 设置cookie处理器
             cookieProcessor = new Rfc6265CookieProcessor();
         }
 
@@ -5075,6 +5099,7 @@ public class StandardContext extends ContainerBase
 
 
         // Binding thread
+        // web应用类加载器绑定到线程上下文类加载器，返回之前的web应用类加载器
         ClassLoader oldCCL = bindThread();
 
         try {
@@ -5082,11 +5107,13 @@ public class StandardContext extends ContainerBase
                 // Start our subordinate components, if any
                 Loader loader = getLoader();
                 if (loader instanceof Lifecycle) {
+                    // 启动web应用加载器
                     ((Lifecycle) loader).start();
                 }
 
                 // since the loader just started, the webapp classloader is now
                 // created.
+                // 设置web应用类加载器的字段
                 setClassLoaderProperty("clearReferencesRmiTargets",
                         getClearReferencesRmiTargets());
                 setClassLoaderProperty("clearReferencesStopThreads",
@@ -5803,7 +5830,7 @@ public class StandardContext extends ContainerBase
      * @return the previous context class loader
      */
     protected ClassLoader bindThread() {
-
+        // web应用类加载器绑定到线程上下文类加载器
         ClassLoader oldContextClassLoader = bind(false, null);
 
         if (isUseNaming()) {
@@ -5814,7 +5841,7 @@ public class StandardContext extends ContainerBase
                 // startup stages
             }
         }
-
+        //返回之前的web应用类加载器
         return oldContextClassLoader;
     }
 
@@ -5837,8 +5864,10 @@ public class StandardContext extends ContainerBase
     @Override
     public ClassLoader bind(boolean usePrivilegedAction, ClassLoader originalClassLoader) {
         Loader loader = getLoader();
+        // web应用类加载器
         ClassLoader webApplicationClassLoader = null;
         if (loader != null) {
+            // 获取web应用类加载器
             webApplicationClassLoader = loader.getClassLoader();
         }
 
@@ -5847,6 +5876,7 @@ public class StandardContext extends ContainerBase
                 PrivilegedAction<ClassLoader> pa = new PrivilegedGetTccl();
                 originalClassLoader = AccessController.doPrivileged(pa);
             } else {
+                // 获取线程上下文类加载器，也就是原有的web应用类加载器
                 originalClassLoader = Thread.currentThread().getContextClassLoader();
             }
         }
@@ -5855,6 +5885,7 @@ public class StandardContext extends ContainerBase
                 webApplicationClassLoader == originalClassLoader) {
             // Not possible or not necessary to switch class loaders. Return
             // null to indicate this.
+            // 如果webApplicationClassLoader为null或者webApplicationClassLoader==originalClassLoader那么不要做任何操作，返回null
             return null;
         }
 
@@ -5864,6 +5895,7 @@ public class StandardContext extends ContainerBase
             PrivilegedAction<Void> pa = new PrivilegedSetTccl(webApplicationClassLoader);
             AccessController.doPrivileged(pa);
         } else {
+            // 将web应用类加载器设置为线程上限文类加载器
             Thread.currentThread().setContextClassLoader(webApplicationClassLoader);
         }
         if (threadBindingListener != null) {
@@ -6100,16 +6132,19 @@ public class StandardContext extends ContainerBase
 
     /**
      * Set the appropriate context attribute for our work directory.
+     * 创建web应用的work目录，默认是{catalina.base}/work/Catalina/{host}/{webbAppName}
      */
     private void postWorkDirectory() {
 
         // Acquire (or calculate) the work directory path
+        // 获取web应用的work目录路径
         String workDir = getWorkDir();
         if (workDir == null || workDir.length() == 0) {
-
+            // 生成web应用的work目录路径
             // Retrieve our parent (normally a host) name
             String hostName = null;
             String engineName = null;
+            // host配置的work目录
             String hostWorkDir = null;
             Container parentHost = getParent();
             if (parentHost != null) {
@@ -6137,6 +6172,7 @@ public class StandardContext extends ContainerBase
             if (hostWorkDir != null ) {
                 workDir = hostWorkDir + File.separator + temp;
             } else {
+                // 默认为work/Catalina/{host}/{webbAppName}
                 workDir = "work" + File.separator + engineName +
                     File.separator + hostName + File.separator + temp;
             }
@@ -6144,6 +6180,7 @@ public class StandardContext extends ContainerBase
         }
 
         // Create this directory if necessary
+        // 创建web应用的work目录
         File dir = new File(workDir);
         if (!dir.isAbsolute()) {
             String catalinaHomePath = null;
@@ -6164,6 +6201,7 @@ public class StandardContext extends ContainerBase
         if (context == null) {
             getServletContext();
         }
+        // 将work目录设置到context的属性中，并且只读
         context.setAttribute(ServletContext.TEMPDIR, dir);
         context.setAttributeReadOnly(ServletContext.TEMPDIR);
     }

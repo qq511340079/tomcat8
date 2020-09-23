@@ -856,6 +856,7 @@ public class StandardHost extends ContainerBase implements Host {
     protected synchronized void startInternal() throws LifecycleException {
 
         // Set error report valve
+        // 为host添加error处理器，当web应用抛出异常时见到的带有栈信息的错误页面就是这个处理器展示的
         String errorValve = getErrorReportValveClass();
         if ((errorValve != null) && (!errorValve.equals(""))) {
             try {
@@ -879,6 +880,7 @@ public class StandardHost extends ContainerBase implements Host {
                         errorValve), t);
             }
         }
+        // 调用父类的startInternal方法，会调用子容器的start方法启动子容器
         super.startInternal();
     }
 

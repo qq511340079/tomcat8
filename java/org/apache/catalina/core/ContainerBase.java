@@ -748,6 +748,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         // Start child
         // Don't do this inside sync block - start can be a slow process and
         // locking the children object can cause problems elsewhere
+        // 启动子容器
         try {
             if ((getState().isAvailable() ||
                     LifecycleState.STARTING_PREP.equals(getState())) &&
@@ -931,6 +932,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         }
 
         // Start our child containers, if any
+        // 启动所有子容器
         Container children[] = findChildren();
         List<Future<Void>> results = new ArrayList<>();
         for (int i = 0; i < children.length; i++) {
@@ -957,14 +959,16 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         }
 
         // Start the Valves in our pipeline (including the basic), if any
+        // 启动pipeline
         if (pipeline instanceof Lifecycle) {
             ((Lifecycle) pipeline).start();
         }
 
-
+        // 设置容器的状态为启动中
         setState(LifecycleState.STARTING);
 
         // Start our thread
+        // 启动容器的后台线程
         threadStart();
     }
 

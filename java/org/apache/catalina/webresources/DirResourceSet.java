@@ -67,11 +67,13 @@ public class DirResourceSet extends AbstractFileResourceSet {
      */
     public DirResourceSet(WebResourceRoot root, String webAppMount, String base,
             String internalPath) {
+        // 设置web资源相对于基础目录下的内部目录
         super(internalPath);
         setRoot(root);
         setWebAppMount(webAppMount);
+        // 设置web资源的基础目录
         setBase(base);
-
+        // 是否添加/WEB-INF/classes/META-INF/resources下的资源，默认false
         if (root.getContext().getAddWebinfClassesResources()) {
             File f = new File(base, internalPath);
             f = new File(f, "/WEB-INF/classes/META-INF/resources");
@@ -81,7 +83,7 @@ public class DirResourceSet extends AbstractFileResourceSet {
                          f.getAbsolutePath(), null, "/");
             }
         }
-
+        // 如果WebResourceRoot已经启动，则启动自己
         if (getRoot().getState().isAvailable()) {
             try {
                 start();
@@ -91,13 +93,21 @@ public class DirResourceSet extends AbstractFileResourceSet {
         }
     }
 
-
+    /**
+     * 根据path获取web资源
+     *
+     * @param path  The path for the resource of interest relative to the root
+     *              of the web application. It must start with '/'.
+     *
+     * @return
+     */
     @Override
     public WebResource getResource(String path) {
         checkPath(path);
         String webAppMount = getWebAppMount();
         WebResourceRoot root = getRoot();
         if (path.startsWith(webAppMount)) {
+            // path对应的文件
             File f = file(path.substring(webAppMount.length()), false);
             if (f == null) {
                 return new EmptyResource(root, path);
@@ -119,10 +129,12 @@ public class DirResourceSet extends AbstractFileResourceSet {
         checkPath(path);
         String webAppMount = getWebAppMount();
         if (path.startsWith(webAppMount)) {
+            // web资源目录，比如WEB-INF/lib
             File f = file(path.substring(webAppMount.length()), true);
             if (f == null) {
                 return EMPTY_STRING_ARRAY;
             }
+            // web资源目录下所有的文件
             String[] result = f.list();
             if (result == null) {
                 return EMPTY_STRING_ARRAY;
@@ -264,8 +276,10 @@ public class DirResourceSet extends AbstractFileResourceSet {
     protected void initInternal() throws LifecycleException {
         super.initInternal();
         // Is this an exploded web application?
+        // web应用是否是一个文件夹
         if (getWebAppMount().equals("")) {
             // Look for a manifest
+            //如果存在META-INF/MANIFEST.MF文件，则读取并添加到当前对象
             File mf = file("META-INF/MANIFEST.MF", true);
             if (mf != null && mf.isFile()) {
                 try (FileInputStream fis = new FileInputStream(mf)) {

@@ -77,6 +77,7 @@ public class EngineConfig
 
         // Process the event that has occurred
         if (event.getType().equals(Lifecycle.START_EVENT))
+            // 启动Engine，仅打印debug日志
             start();
         else if (event.getType().equals(Lifecycle.STOP_EVENT))
             stop();

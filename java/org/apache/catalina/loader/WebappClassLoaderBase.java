@@ -1521,17 +1521,22 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
     public void start() throws LifecycleException {
 
         state = LifecycleState.STARTING_PREP;
-
+        // 获取/WEB-INF/classes目录对应的web应用资源对象，获取的是表示/WEB-INF/classes目录的WebResource数组
         WebResource[] classesResources = resources.getResources("/WEB-INF/classes");
         for (WebResource classes : classesResources) {
+            // 是文件夹并且可读则添加到localRepositories
             if (classes.isDirectory() && classes.canRead()) {
                 localRepositories.add(classes.getURL());
             }
         }
+        // 获取/WEB-INF/lib文件下的jar包对应的web资源对象
         WebResource[] jars = resources.listResources("/WEB-INF/lib");
         for (WebResource jar : jars) {
+            // 是jar包文件并且可读
             if (jar.getName().endsWith(".jar") && jar.isFile() && jar.canRead()) {
+                // 添加到localRepositories
                 localRepositories.add(jar.getURL());
+                // 记录jar包文件上次的修改时间
                 jarModificationTimes.put(
                         jar.getName(), Long.valueOf(jar.getLastModified()));
             }

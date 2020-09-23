@@ -319,6 +319,7 @@ public class HostConfig implements LifecycleListener {
             // 创建appBase和xmlBase目录
             beforeStart();
         } else if (event.getType().equals(Lifecycle.START_EVENT)) {
+            // 自动部署web应用
             start();
         } else if (event.getType().equals(Lifecycle.STOP_EVENT)) {
             stop();
@@ -439,8 +440,10 @@ public class HostConfig implements LifecycleListener {
         // 通过描述文件部署
         deployDescriptors(configBase, configBase.list());
         // Deploy WARs
+        // 部署war包
         deployWARs(appBase, filteredAppPaths);
         // Deploy expanded folders
+        // 部署文件夹
         deployDirectories(appBase, filteredAppPaths);
 
     }
@@ -1024,8 +1027,10 @@ public class HostConfig implements LifecycleListener {
             log.error(sm.getString("hostConfig.deployWar.error",
                     war.getAbsolutePath()), t);
         } finally {
+            // 注册web应用监听的资源
             // If we're unpacking WARs, the docBase will be mutated after
             // starting the context
+            // 如果先解压war包再部署，则docBase路径会改变
             boolean unpackWAR = unpackWARs;
             if (unpackWAR && context instanceof StandardContext) {
                 unpackWAR = ((StandardContext) context).getUnpackWAR();
@@ -1117,19 +1122,25 @@ public class HostConfig implements LifecycleListener {
         }
 
         Context context = null;
+        // web应用文件夹中的context.xml文件
         File xml = new File(dir, Constants.ApplicationContextXml);
+        // 复制的context.xml文件，{CATALINA_BASE}/conf/Catalina/{host}/{webAppName}.xml
         File xmlCopy =
                 new File(host.getConfigBaseFile(), cn.getBaseName() + ".xml");
 
 
         DeployedApplication deployedApp;
+        // 是否复制context.xml文件，host配置默认false
         boolean copyThisXml = isCopyXML();
+        // 是否使用web应用文件夹中的context.xml部署，默认true
         boolean deployThisXML = isDeployThisXML(dir, cn);
 
         try {
+            // 使用web应用文件夹中的context.xml文件部署，并且该文件存在
             if (deployThisXML && xml.exists()) {
                 synchronized (digesterLock) {
                     try {
+                        // 解析web应用文件夹中的context.xml文件
                         context = (Context) digester.parse(xml);
                     } catch (Exception e) {
                         log.error(sm.getString(
@@ -1146,11 +1157,14 @@ public class HostConfig implements LifecycleListener {
 
                 if (copyThisXml == false && context instanceof StandardContext) {
                     // Host is using default value. Context may override it.
+                    // context可能覆盖host的默认配置
                     copyThisXml = ((StandardContext) context).getCopyXML();
                 }
 
                 if (copyThisXml) {
+                    // 复制web应用文件夹下的context.xml
                     Files.copy(xml.toPath(), xmlCopy.toPath());
+                    // 设置context的context.xml文件为复制后的文件路径
                     context.setConfigFile(xmlCopy.toURI().toURL());
                 } else {
                     context.setConfigFile(xml.toURI().toURL());
@@ -1158,27 +1172,32 @@ public class HostConfig implements LifecycleListener {
             } else if (!deployThisXML && xml.exists()) {
                 // Block deployment as META-INF/context.xml may contain security
                 // configuration necessary for a secure deployment.
+                // META-INF/context.xml作为部署的一部分，可能包含安全部署所需的安全配置
                 log.error(sm.getString("hostConfig.deployDescriptor.blocked",
                         cn.getPath(), xml, xmlCopy));
                 context = new FailedContext();
             } else {
+                // 直接部署web应用，不使用context.xml，创建context实例，默认为org.apache.catalina.core.StandardContext
                 context = (Context) Class.forName(contextClass).getConstructor().newInstance();
             }
-
+            // 获取ContextConfig class
             Class<?> clazz = Class.forName(host.getConfigClass());
             LifecycleListener listener = (LifecycleListener) clazz.getConstructor().newInstance();
+            // 将ContextConfig实例注册到context，用于详细配置web应用，如解析web.xml等
             context.addLifecycleListener(listener);
 
             context.setName(cn.getName());
             context.setPath(cn.getPath());
             context.setWebappVersion(cn.getVersion());
             context.setDocBase(cn.getBaseName());
+            // 将context添加到host中，如果host已经启动则会调用context的start方法启动context
             host.addChild(context);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
             log.error(sm.getString("hostConfig.deployDir.error",
                     dir.getAbsolutePath()), t);
         } finally {
+            // 创建DeployedApplication实例，为web应用添加资源监听
             deployedApp = new DeployedApplication(cn.getName(),
                     xml.exists() && deployThisXML && copyThisXml);
 

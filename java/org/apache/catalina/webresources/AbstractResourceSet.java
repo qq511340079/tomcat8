@@ -29,8 +29,11 @@ public abstract class AbstractResourceSet extends LifecycleBase
         implements WebResourceSet {
 
     private WebResourceRoot root;
+    // web资源基础目录
     private String base;
+    // web资源相对于基础目录下的内部目录
     private String internalPath = "";
+    // webApp挂载目录
     private String webAppMount;
     private boolean classLoaderOnly;
     private boolean staticOnly;

@@ -297,9 +297,10 @@ public class ContextConfig implements LifecycleListener {
 
         // Process the event that has occurred
         if (event.getType().equals(Lifecycle.CONFIGURE_START_EVENT)) {
-            // 解析web.xml配置context，server.xml中配置的context会使用这种方式配置
+            // 解析web.xml配置context
             configureStart();
         } else if (event.getType().equals(Lifecycle.BEFORE_START_EVENT)) {
+            // 修正docBase目录
             beforeStart();
         } else if (event.getType().equals(Lifecycle.AFTER_START_EVENT)) {
             // Restore docBase for management tools
@@ -309,6 +310,7 @@ public class ContextConfig implements LifecycleListener {
         } else if (event.getType().equals(Lifecycle.CONFIGURE_STOP_EVENT)) {
             configureStop();
         } else if (event.getType().equals(Lifecycle.AFTER_INIT_EVENT)) {
+            // 解析context.xml
             init();
         } else if (event.getType().equals(Lifecycle.AFTER_DESTROY_EVENT)) {
             destroy();
@@ -444,22 +446,27 @@ public class ContextConfig implements LifecycleListener {
 
     /**
      * Process the default configuration file, if it exists.
+     * 解析默认的context.xml添加到当前context
+     *
      * @param digester The digester that will be used for XML parsing
      */
     protected void contextConfig(Digester digester) {
-
+        // 默认的context.xml
         String defaultContextXml = null;
 
         // Open the default context.xml file, if it exists
         if (context instanceof StandardContext) {
+            // 从context配置中获取默认context.xml
             defaultContextXml = ((StandardContext)context).getDefaultContextXml();
         }
         // set the default if we don't have any overrides
         if (defaultContextXml == null) {
+            // 使用全局的context.xml
             defaultContextXml = Constants.DefaultContextXml;
         }
-
+        // 不覆盖默认的context.xml，覆盖默认的context.xml的话就不需要解析默认的context.xml
         if (!context.getOverride()) {
+            // 默认的context.xml
             File defaultContextFile = new File(defaultContextXml);
             if (!defaultContextFile.isAbsolute()) {
                 defaultContextFile =
@@ -468,13 +475,14 @@ public class ContextConfig implements LifecycleListener {
             if (defaultContextFile.exists()) {
                 try {
                     URL defaultContextUrl = defaultContextFile.toURI().toURL();
+                    // 解析默认的context.xml，默认情况下是conf/context.xml，会添加监听资源WEB-INF/web.xml和${catalina.base}/conf/web.xml
                     processContextConfig(digester, defaultContextUrl);
                 } catch (MalformedURLException e) {
                     log.error(sm.getString(
                             "contextConfig.badUrl", defaultContextFile), e);
                 }
             }
-
+            // host级别的context.xml
             File hostContextFile = new File(getHostConfigBase(), Constants.HostContextXml);
             if (hostContextFile.exists()) {
                 try {
@@ -486,7 +494,9 @@ public class ContextConfig implements LifecycleListener {
                 }
             }
         }
+
         if (context.getConfigFile() != null) {
+            // 解析web应用级别的web.xml
             processContextConfig(digester, context.getConfigFile());
         }
 
@@ -670,6 +680,7 @@ public class ContextConfig implements LifecycleListener {
 
         if ((context instanceof StandardContext)
             && ((StandardContext) context).getAntiResourceLocking()) {
+            // 防止资源锁定，将web应用复制到临时目录，将context的docBase更新为临时目录路径
 
             Host host = (Host) context.getParent();
             String docBase = context.getDocBase();
@@ -708,8 +719,11 @@ public class ContextConfig implements LifecycleListener {
             }
 
             // Cleanup just in case an old deployment is lying around
+            // 删除临时目录下的旧文件
             ExpandWar.delete(antiLockingDocBase);
+            // 将web应用复制到临时目录
             if (ExpandWar.copy(docBaseFile, antiLockingDocBase)) {
+                // 更新context的docBase为临时目录路径
                 context.setDocBase(antiLockingDocBase.getPath());
             }
         }
@@ -718,6 +732,7 @@ public class ContextConfig implements LifecycleListener {
 
     /**
      * Process a "init" event for this Context.
+     * 解析context.xml
      */
     protected void init() {
         // Called from StandardContext.init()
@@ -730,7 +745,7 @@ public class ContextConfig implements LifecycleListener {
         }
         context.setConfigured(false);
         ok = true;
-
+        // 解析context.xml，包括全局默认的、host级别的、web应用级别的
         contextConfig(contextDigester);
     }
 
@@ -746,7 +761,7 @@ public class ContextConfig implements LifecycleListener {
             log.error(sm.getString(
                     "contextConfig.fixDocBase", context.getName()), e);
         }
-
+        // 处理资源锁定
         antiLocking();
     }
 
