@@ -1274,7 +1274,7 @@ public class ContextConfig implements LifecycleListener {
         // Everything else in order
         context.setEffectiveMajorVersion(webxml.getMajorVersion());
         context.setEffectiveMinorVersion(webxml.getMinorVersion());
-
+        // 设置context-param
         for (Entry<String, String> entry : webxml.getContextParams().entrySet()) {
             context.addParameter(entry.getKey(), entry.getValue());
         }
@@ -1304,6 +1304,7 @@ public class ContextConfig implements LifecycleListener {
             context.addFilterMap(filterMap);
         }
         context.setJspConfigDescriptor(webxml.getJspConfigDescriptor());
+        // 设置web应用监听器，比如ServletContextListener
         for (String listener : webxml.getListeners()) {
             context.addApplicationListener(listener);
         }

@@ -702,6 +702,7 @@ public class StandardContext extends ContainerBase
     /**
      * The Jar scanner to use to search for Jars that might contain
      * configuration information such as TLDs or web-fragment.xml files.
+     * jar包扫描器，用来搜索包含TLDS或web-fragment.xml配置信息的jar包
      */
     private JarScanner jarScanner = null;
 
@@ -4620,17 +4621,22 @@ public class StandardContext extends ContainerBase
             getLogger().debug("Starting filters");
         }
         // Instantiate and record a FilterConfig for each defined filter
+        // 实例化定义的filter并且记录到filterConfigs
         boolean ok = true;
         synchronized (filterConfigs) {
+            // 清空filterConfigs
             filterConfigs.clear();
+            // 遍历定义的filter
             for (Entry<String,FilterDef> entry : filterDefs.entrySet()) {
                 String name = entry.getKey();
                 if (getLogger().isDebugEnabled()) {
                     getLogger().debug(" Starting filter '" + name + "'");
                 }
                 try {
+                    // 创建ApplicationFilterConfig对象记录filter，内部会实例化filter
                     ApplicationFilterConfig filterConfig =
                             new ApplicationFilterConfig(this, entry.getValue());
+                    // 将filterConfig保存到filterConfigs
                     filterConfigs.put(name, filterConfig);
                 } catch (Throwable t) {
                     t = ExceptionUtils.unwrapInvocationTargetException(t);
@@ -4697,7 +4703,9 @@ public class StandardContext extends ContainerBase
             log.debug("Configuring application event listeners");
 
         // Instantiate the required listeners
+        // 获取Web应用监听器
         String listeners[] = findApplicationListeners();
+        // 实例化的Web应用监听器对象
         Object results[] = new Object[listeners.length];
         boolean ok = true;
         for (int i = 0; i < results.length; i++) {
@@ -4706,6 +4714,7 @@ public class StandardContext extends ContainerBase
                     listeners[i] + "'");
             try {
                 String listener = listeners[i];
+                //实例化Web应用监听器
                 results[i] = getInstanceManager().newInstance(listener);
             } catch (Throwable t) {
                 t = ExceptionUtils.unwrapInvocationTargetException(t);
@@ -4721,9 +4730,13 @@ public class StandardContext extends ContainerBase
         }
 
         // Sort listeners in two arrays
+        // web应用事件监听器
         ArrayList<Object> eventListeners = new ArrayList<>();
+        // web应用生命周期监听器
         ArrayList<Object> lifecycleListeners = new ArrayList<>();
+        // 遍历所有web应用监听器，按照类型划分到对应的list
         for (int i = 0; i < results.length; i++) {
+            // web应用事件类型的监听器
             if ((results[i] instanceof ServletContextAttributeListener)
                 || (results[i] instanceof ServletRequestAttributeListener)
                 || (results[i] instanceof ServletRequestListener)
@@ -4731,6 +4744,7 @@ public class StandardContext extends ContainerBase
                 || (results[i] instanceof HttpSessionAttributeListener)) {
                 eventListeners.add(results[i]);
             }
+            // web应用生命周期类型监听器
             if ((results[i] instanceof ServletContextListener)
                 || (results[i] instanceof HttpSessionListener)) {
                 lifecycleListeners.add(results[i]);
@@ -4742,6 +4756,8 @@ public class StandardContext extends ContainerBase
         // Put them these listeners after the ones defined in web.xml and/or
         // annotations then overwrite the list of instances with the new, full
         // list.
+        // web应用监听器可能可能通过ServletContextInitializers或其他代码通过调用插入监听器的方法已经添加到applicationEventListenersList
+        // 则将这些监听器添加到web.xml或者注解配置的监听器的后面，用这个全量的监听器list覆盖之前的
         for (Object eventListener: getApplicationEventListeners()) {
             eventListeners.add(eventListener);
         }
@@ -4760,21 +4776,25 @@ public class StandardContext extends ContainerBase
             getLogger().debug("Sending application start events");
 
         // Ensure context is not null
+        // ServletContext不为null
         getServletContext();
+        // 设置允许添加ServletContextListener标识为false
         context.setNewServletContextListenerAllowed(false);
-
+        // 获取web应用生命周期监听器
         Object instances[] = getApplicationLifecycleListeners();
         if (instances == null || instances.length == 0) {
             return ok;
         }
-
+        // 创建ServletContextEvent实例
         ServletContextEvent event = new ServletContextEvent(getServletContext());
         ServletContextEvent tldEvent = null;
         if (noPluggabilityListeners.size() > 0) {
             noPluggabilityServletContext = new NoPluggabilityServletContext(getServletContext());
             tldEvent = new ServletContextEvent(noPluggabilityServletContext);
         }
+        // 遍历web应用生命周期监听器，调用ServletContextListener的contextInitialized方法
         for (int i = 0; i < instances.length; i++) {
+            // 不是ServletContextListener则跳过
             if (!(instances[i] instanceof ServletContextListener))
                 continue;
             ServletContextListener listener =
@@ -4952,10 +4972,12 @@ public class StandardContext extends ContainerBase
     public boolean loadOnStartup(Container children[]) {
 
         // Collect "load on startup" servlets that need to be initialized
+        // 收集需要在web应用启动时就加载的servlet，按loadOnStartup排序
         TreeMap<Integer, ArrayList<Wrapper>> map = new TreeMap<>();
         for (int i = 0; i < children.length; i++) {
             Wrapper wrapper = (Wrapper) children[i];
             int loadOnStartup = wrapper.getLoadOnStartup();
+            // 获取servlet的loadOnStartup配置，小于0表示web应用启动时不加载
             if (loadOnStartup < 0)
                 continue;
             Integer key = Integer.valueOf(loadOnStartup);
@@ -4968,6 +4990,7 @@ public class StandardContext extends ContainerBase
         }
 
         // Load the collected "load on startup" servlets
+        // 加载需要在web应用启动时就加载的servlet
         for (ArrayList<Wrapper> list : map.values()) {
             for (Wrapper wrapper : list) {
                 try {
@@ -5134,6 +5157,7 @@ public class StandardContext extends ContainerBase
 
                 // Initialize logger again. Other components might have used it
                 // too early, so it should be reset.
+                // 初始化logger对象
                 logger = null;
                 getLogger();
 
@@ -5161,9 +5185,11 @@ public class StandardContext extends ContainerBase
                 }
 
                 // Notify our interested LifecycleListeners
+                // 触发CONFIGURE_START_EVENT事件，ContextConfig监听了该事件解析web.xml
                 fireLifecycleEvent(Lifecycle.CONFIGURE_START_EVENT, null);
 
                 // Start our child containers, if not already started
+                // 启动子容器，比如Wrapper
                 for (Container child : findChildren()) {
                     if (!child.getState().isAvailable()) {
                         child.start();
@@ -5172,6 +5198,7 @@ public class StandardContext extends ContainerBase
 
                 // Start the Valves in our pipeline (including the basic),
                 // if any
+                // 启动pipeline
                 if (pipeline instanceof Lifecycle) {
                     ((Lifecycle) pipeline).start();
                 }
@@ -5219,11 +5246,13 @@ public class StandardContext extends ContainerBase
             }
 
             // We put the resources into the servlet context
+            // 将web应用的资源放到ServletContext的属性中
             if (ok)
                 getServletContext().setAttribute
                     (Globals.RESOURCES_ATTR, getResources());
 
             if (ok ) {
+                // 如果没有实例管理器，则创建默认的实例管理器，用来加载Class并创建实例
                 if (getInstanceManager() == null) {
                     javax.naming.Context context = null;
                     if (isUseNaming() && getNamingContextListener() != null) {
@@ -5240,15 +5269,18 @@ public class StandardContext extends ContainerBase
             }
 
             // Create context attributes that will be required
+            // 将jar包扫描器放入ServletContext属性
             if (ok) {
                 getServletContext().setAttribute(
                         JarScanner.class.getName(), getJarScanner());
             }
 
             // Set up the context init params
+            // 合并context.xml的param和web.xml的context-param
             mergeParameters();
 
             // Call ServletContainerInitializers
+            // 调用ServletContainerInitializer的onStartup方法
             for (Map.Entry<ServletContainerInitializer, Set<Class<?>>> entry :
                 initializers.entrySet()) {
                 try {
@@ -5262,6 +5294,7 @@ public class StandardContext extends ContainerBase
             }
 
             // Configure and call application event listeners
+            // 配置并且调用ServletContextListener
             if (ok) {
                 if (!listenerStart()) {
                     log.error(sm.getString("standardContext.listenerFail"));
@@ -5288,6 +5321,7 @@ public class StandardContext extends ContainerBase
             }
 
             // Configure and call application filters
+            // 配置并且启动web应用的filter
             if (ok) {
                 if (!filterStart()) {
                     log.error(sm.getString("standardContext.filterFail"));
@@ -5296,6 +5330,7 @@ public class StandardContext extends ContainerBase
             }
 
             // Load and initialize all "load on startup" servlets
+            // 加载并且初始化所有需要在web应用启动时候就加载的servlet，通过load-on-startup配置
             if (ok) {
                 if (!loadOnStartup(findChildren())){
                     log.error(sm.getString("standardContext.servletFail"));
@@ -5304,6 +5339,7 @@ public class StandardContext extends ContainerBase
             }
 
             // Start ContainerBackgroundProcessor thread
+            // 启动容器的后台线程
             super.threadStart();
         } finally {
             // Unbinding thread
@@ -5332,9 +5368,11 @@ public class StandardContext extends ContainerBase
         // some platforms these references may lock the JAR files. Since web
         // application start is likely to have read from lots of JARs, trigger
         // a clean-up now.
+        // WebResources实现缓存对JAR文件的引用。 在某些平台上，这些引用可能会锁定JAR文件。 由于Web应用程序启动可能已从许多JAR中读取，因此请立即进行清理。
         getResources().gc();
 
         // Reinitializing if something went wrong
+        // 根据是否启动成功设置容器的状态
         if (!ok) {
             setState(LifecycleState.FAILED);
         } else {

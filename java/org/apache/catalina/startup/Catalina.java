@@ -414,6 +414,7 @@ public class Catalina {
         digester.addRuleSet(new NamingRuleSet("Server/Service/Engine/Host/Context/"));
 
         // When the 'engine' is found, set the parentClassLoader.
+        // 设置engine的父级类加载器
         digester.addRule("Server/Service/Engine",
                          new SetParentClassLoaderRule(parentClassLoader));
         addClusterRuleSet(digester, "Server/Service/Engine/Cluster/");

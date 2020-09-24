@@ -104,7 +104,9 @@ public final class ApplicationFilterConfig implements FilterConfig, Serializable
         this.context = context;
         this.filterDef = filterDef;
         // Allocate a new filter instance if necessary
+        // 创建filter实例
         if (filterDef.getFilter() == null) {
+            // web.xml配置的filter会到这里，通过类名创建实例
             getFilter();
         } else {
             this.filter = filterDef.getFilter();
@@ -256,13 +258,16 @@ public final class ApplicationFilterConfig implements FilterConfig, Serializable
             IllegalArgumentException, NoSuchMethodException, SecurityException {
 
         // Return the existing filter instance, if any
+        // 如果已经有filter实例，则直接返回filter
         if (this.filter != null)
             return (this.filter);
 
         // Identify the class loader we will be using
+        // 获取filter类名
         String filterClass = filterDef.getFilterClass();
+        // 创建filter实例
         this.filter = (Filter) getInstanceManager().newInstance(filterClass);
-
+        // 调用filter的init方法
         initFilter();
 
         return (this.filter);
@@ -282,6 +287,7 @@ public final class ApplicationFilterConfig implements FilterConfig, Serializable
                 }
             }
         } else {
+            // 初始化filter
             filter.init(this);
         }
 

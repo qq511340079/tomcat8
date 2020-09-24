@@ -100,7 +100,9 @@ public class DefaultInstanceManager implements InstanceManager {
 
     private final Context context;
     private final Map<String, Map<String, String>> injectionMap;
+    // web应用类加载器
     protected final ClassLoader classLoader;
+    // 容器的类加载器，一般是Catalina类加载器
     protected final ClassLoader containerClassLoader;
     protected final boolean privileged;
     protected final boolean ignoreAnnotations;
@@ -147,6 +149,7 @@ public class DefaultInstanceManager implements InstanceManager {
     public Object newInstance(String className) throws IllegalAccessException,
             InvocationTargetException, NamingException, InstantiationException,
             ClassNotFoundException, IllegalArgumentException, NoSuchMethodException, SecurityException {
+        // 加载class
         Class<?> clazz = loadClassMaybePrivileged(className, classLoader);
         return newInstance(clazz.getConstructor().newInstance(), clazz);
     }
@@ -524,6 +527,7 @@ public class DefaultInstanceManager implements InstanceManager {
                 throw new RuntimeException(t);
             }
         } else {
+            // 加载class
             clazz = loadClass(className, classLoader);
         }
         checkAccess(clazz);
@@ -532,17 +536,21 @@ public class DefaultInstanceManager implements InstanceManager {
 
     protected Class<?> loadClass(String className, ClassLoader classLoader)
             throws ClassNotFoundException {
+        // org.apache.catalina开头的class直接使用Catalina类加载器加载
         if (className.startsWith("org.apache.catalina")) {
             return containerClassLoader.loadClass(className);
         }
         try {
+            // 使用Catalina类加载器加载
             Class<?> clazz = containerClassLoader.loadClass(className);
+            // 如果是ContainerServlet类型则直接返回，ContainerServlet是可以访问Catalina内部功能的servlet，是从Catalina类加载器加载的
             if (ContainerServlet.class.isAssignableFrom(clazz)) {
                 return clazz;
             }
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
         }
+        // 使用web应用类加载器加载
         return classLoader.loadClass(className);
     }
 

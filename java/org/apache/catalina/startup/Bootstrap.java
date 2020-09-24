@@ -275,7 +275,7 @@ public final class Bootstrap {
         // Set the shared extensions class loader
         if (log.isDebugEnabled())
             log.debug("Setting startup class properties");
-        // 设置Catalina的类加载器为sharedLoader
+        // 设置Catalina的父级类加载器为sharedLoader
         String methodName = "setParentClassLoader";
         Class<?> paramTypes[] = new Class[1];
         paramTypes[0] = Class.forName("java.lang.ClassLoader");

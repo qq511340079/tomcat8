@@ -86,6 +86,7 @@ public class StandardRoot extends LifecycleMBeanBase implements WebResourceRoot 
     private final List<List<WebResourceSet>> allResources =
             new ArrayList<>();
     {
+        // 将资源添加到allResources，加载class的顺序(先WEB-INF/classes、WEB-INF/lib)就是allResources的顺序
         allResources.add(preResources);
         allResources.add(mainResources);
         allResources.add(classResources);

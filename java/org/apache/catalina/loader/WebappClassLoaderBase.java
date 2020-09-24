@@ -825,7 +825,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
 
         if (log.isDebugEnabled())
             log.debug("    findClass(" + name + ")");
-
+        // 校验类加载器组件状态
         checkStateForClassLoading(name);
 
         // (1) Permission to define this class when using a SecurityManager
@@ -856,6 +856,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                         new PrivilegedFindClassByName(name);
                     clazz = AccessController.doPrivileged(dp);
                 } else {
+                    // 从web应用资源中加载class
                     clazz = findClassInternal(name);
                 }
             } catch(AccessControlException ace) {
@@ -1221,9 +1222,11 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             Class<?> clazz = null;
 
             // Log access to stopped class loader
+            // 校验web应用类加载器的状态是否已经停止
             checkStateForClassLoading(name);
 
             // (0) Check our previously loaded local class cache
+            // 从缓存中加载
             clazz = findLoadedClass0(name);
             if (clazz != null) {
                 if (log.isDebugEnabled())
@@ -1234,6 +1237,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             }
 
             // (0.1) Check our previously loaded class cache
+            // 从缓存中加载，这个缓存是类加载器的缓存
             clazz = findLoadedClass(name);
             if (clazz != null) {
                 if (log.isDebugEnabled())
@@ -1246,9 +1250,12 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             // (0.2) Try loading the class with the system class loader, to prevent
             //       the webapp from overriding Java SE classes. This implements
             //       SRV.10.7.2
+            // 先使用SystemClassLoader加载，防止web应用覆盖jdk的class
+            //
             String resourceName = binaryNameToPath(name, false);
-
+            // 获取SystemClassLoader
             ClassLoader javaseLoader = getJavaseClassLoader();
+            // 是否从SystemClassLoader类加载器加载class资源成功
             boolean tryLoadingFromJavaseLoader;
             try {
                 // Use getResource as it won't trigger an expensive
@@ -1266,6 +1273,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                     PrivilegedAction<URL> dp = new PrivilegedJavaseGetResource(resourceName);
                     url = AccessController.doPrivileged(dp);
                 } else {
+                    // 使用SystemClassLoader类加载器获取要加载的资源url
                     url = javaseLoader.getResource(resourceName);
                 }
                 tryLoadingFromJavaseLoader = (url != null);
@@ -1275,10 +1283,12 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                 // The getResource() trick won't work for this class. We have to
                 // try loading it directly and accept that we might get a
                 // ClassNotFoundException.
+                // 使用getResource方法的技巧可能不适用于要加载的class，不得不直接加载class
                 tryLoadingFromJavaseLoader = true;
             }
 
             if (tryLoadingFromJavaseLoader) {
+                // 使用SystemClassLoader类加载器加载
                 try {
                     clazz = javaseLoader.loadClass(name);
                     if (clazz != null) {
@@ -1305,7 +1315,17 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                     }
                 }
             }
-
+            // 是否使用java标准的父级委托方法加载class，默认false，filter方法判断加载的class是否需要使用java标准的父级委托方式加载
+            // web应用类加载器默认的加载顺序如下：
+            // 1.从缓存中加载
+            // 2.如果没有，从bootstrap类加载器加载
+            // 3.如果没有，从web应用类加载器加载
+            // 4.如果没有则按System类加载器 -> common类加载器 -> shared类加载器的顺序依次尝试加载
+            // 如果delegateLoad为false，使用java标准的父级委托方法加载class，加载顺序如下：
+            // 1.从缓存中加载
+            // 2.如果没有，从bootstrap类加载器加载
+            // 3.如果没有则按System类加载器 -> common类加载器 -> shared类加载器的顺序依次尝试加载
+            // 4.如果没有，从web应用类加载器加载
             boolean delegateLoad = delegate || filter(name, true);
 
             // (1) Delegate to our parent if requested
@@ -1313,6 +1333,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                 if (log.isDebugEnabled())
                     log.debug("  Delegating to parent classloader1 " + parent);
                 try {
+                    // java标准的父级委托方法加载class
                     clazz = Class.forName(name, false, parent);
                     if (clazz != null) {
                         if (log.isDebugEnabled())
@@ -1327,9 +1348,11 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             }
 
             // (2) Search local repositories
+            // 从web应用类加载器加载
             if (log.isDebugEnabled())
                 log.debug("  Searching local repositories");
             try {
+                //从/WEB-INF/classes目录加载class
                 clazz = findClass(name);
                 if (clazz != null) {
                     if (log.isDebugEnabled())
@@ -1343,6 +1366,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             }
 
             // (3) Delegate to parent unconditionally
+            // web应用类加载器没有加载到，委托父类加载器加载
             if (!delegateLoad) {
                 if (log.isDebugEnabled())
                     log.debug("  Delegating to parent classloader at end: " + parent);
@@ -2275,24 +2299,27 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
      * @return the loaded class, or null if the class isn't found
      */
     protected Class<?> findClassInternal(String name) {
-
+        // 校验类加载器的状态
         checkStateForResourceLoading(name);
 
         if (name == null) {
             return null;
         }
+        // 转换class的路径
         String path = binaryNameToPath(name, true);
-
+        // 从缓存中获取
         ResourceEntry entry = resourceEntries.get(path);
+        // resource代表要加载的class资源
         WebResource resource = null;
 
         if (entry == null) {
+            // 缓存没有，从web应用资源中查找
             resource = resources.getClassLoaderResource(path);
-
+            // web应用资源中不包含该class
             if (!resource.exists()) {
                 return null;
             }
-
+            // 缓存class
             entry = new ResourceEntry();
             entry.lastModified = resource.getLastModified();
 
@@ -2309,24 +2336,25 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                 }
             }
         }
-
+        // 获取缓存中的class
         Class<?> clazz = entry.loadedClass;
         if (clazz != null)
             return clazz;
-
+        // 缓存中没有要加载的class, 开始加载class
         synchronized (getClassLoadingLock(name)) {
             clazz = entry.loadedClass;
             if (clazz != null)
                 return clazz;
 
             if (resource == null) {
+                // 从web应用资源中查找
                 resource = resources.getClassLoaderResource(path);
             }
 
             if (!resource.exists()) {
                 return null;
             }
-
+            // 获取class的byte数据
             byte[] binaryContent = resource.getContent();
             if (binaryContent == null) {
                 // Something went wrong reading the class bytes (and will have
@@ -2403,6 +2431,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             }
 
             try {
+                // 加载class
                 clazz = defineClass(name, binaryContent, 0,
                         binaryContent.length, new CodeSource(codeBase, certificates));
             } catch (UnsupportedClassVersionError ucve) {
@@ -2411,13 +2440,20 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                         sm.getString("webappClassLoader.wrongVersion",
                                 name));
             }
+            // 将class放入缓存
             entry.loadedClass = clazz;
         }
 
         return clazz;
     }
 
-
+    /**
+     * 将class路径中的.替换为/，并加上.class后缀
+     *
+     * @param binaryName
+     * @param withLeadingSlash
+     * @return
+     */
     private String binaryNameToPath(String binaryName, boolean withLeadingSlash) {
         // 1 for leading '/', 6 for ".class"
         StringBuilder path = new StringBuilder(7 + binaryName.length());
@@ -2477,9 +2513,9 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
      * @return a loaded class
      */
     protected Class<?> findLoadedClass0(String name) {
-
+        // 将class路径中的.替换为/，并加上.class后缀
         String path = binaryNameToPath(name, true);
-
+        // 从已经加载的类的缓存中获取
         ResourceEntry entry = resourceEntries.get(path);
         if (entry != null) {
             return entry.loadedClass;

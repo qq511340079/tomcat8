@@ -332,6 +332,8 @@ public class StandardWrapper extends ContainerBase
 
 
     /**
+     * 获取servlet的loadOnStartup配置
+     *
      * @return the load-on-startup order value (negative value means
      * load on first call).
      */
@@ -344,6 +346,7 @@ public class StandardWrapper extends ContainerBase
              * used during registerJMX (when registering the JSP
              * monitoring mbean)
              */
+            // 如果是jspServlet则必须在web应用启动的时候就被创建，因为jspServlet实例在注册JMX时会使用
              return Integer.MAX_VALUE;
         } else {
             return (this.loadOnStartup);
@@ -1019,6 +1022,7 @@ public class StandardWrapper extends ContainerBase
     public synchronized Servlet loadServlet() throws ServletException {
 
         // Nothing to do if we already have an instance or an instance pool
+        // servlet没有实现SingleThreadModel接口并且instance不为null，则直接返回instance
         if (!singleThreadModel && (instance != null))
             return instance;
 
@@ -1031,14 +1035,16 @@ public class StandardWrapper extends ContainerBase
         try {
             long t1=System.currentTimeMillis();
             // Complain if no servlet class has been specified
+            // 校验是否配置了servlet的类名
             if (servletClass == null) {
                 unavailable(null);
                 throw new ServletException
                     (sm.getString("standardWrapper.notClass", getName()));
             }
-
+            // 获得web应用的实例管理器
             InstanceManager instanceManager = ((StandardContext)getParent()).getInstanceManager();
             try {
+                // 创建servlet实例
                 servlet = (Servlet) instanceManager.newInstance(servletClass);
             } catch (ClassCastException e) {
                 unavailable(null);
@@ -1062,6 +1068,7 @@ public class StandardWrapper extends ContainerBase
             }
 
             if (multipartConfigElement == null) {
+                // 寻找servlet的MultipartConfig注解，文件上传相关
                 MultipartConfig annotation =
                         servlet.getClass().getAnnotation(MultipartConfig.class);
                 if (annotation != null) {
@@ -1139,9 +1146,10 @@ public class StandardWrapper extends ContainerBase
                     }
                 }
             } else {
+                // 调用servlet的init方法
                 servlet.init(facade);
             }
-
+            // 设置wrapper初始化完成标识为true
             instanceInitialized = true;
         } catch (UnavailableException f) {
             unavailable(f);
@@ -1594,7 +1602,7 @@ public class StandardWrapper extends ContainerBase
 
         // Start up this component
         super.startInternal();
-
+        // 设置servlet可用的时间
         setAvailable(0L);
 
         // Send j2ee.state.running notification
