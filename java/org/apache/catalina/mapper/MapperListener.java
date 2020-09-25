@@ -100,16 +100,18 @@ public class MapperListener extends LifecycleMBeanBase
         if (engine == null) {
             return;
         }
-
+        // 设置mapper默认的host
         findDefaultHost();
-
+        // 将MapperListener作为listener添加到engine
         addListeners(engine);
-
+        // 获取所有host
         Container[] conHosts = engine.findChildren();
+        // 遍历所有host，如果host的状态不是NEW，则注册host到mapperListener
         for (Container conHost : conHosts) {
             Host host = (Host) conHost;
             if (!LifecycleState.NEW.equals(host.getState())) {
                 // Registering the host will register the context and wrappers
+                // 注册host、context、wrapper
                 registerHost(host);
             }
         }
@@ -260,22 +262,25 @@ public class MapperListener extends LifecycleMBeanBase
     // ------------------------------------------------------ Protected Methods
 
     private void findDefaultHost() {
-
+        // 获取engine
         Engine engine = service.getContainer();
+        // 获取默认的host
         String defaultHost = engine.getDefaultHost();
 
         boolean found = false;
 
         if (defaultHost != null && defaultHost.length() >0) {
+            // 获取host
             Container[] containers = engine.findChildren();
-
+            // 遍历所有host寻找默认的host
             for (Container container : containers) {
                 Host host = (Host) container;
+                // 是否是默认的host
                 if (defaultHost.equalsIgnoreCase(host.getName())) {
                     found = true;
                     break;
                 }
-
+                // 通过host的别名判断是否是默认host
                 String[] aliases = host.findAliases();
                 for (String alias : aliases) {
                     if (defaultHost.equalsIgnoreCase(alias)) {
@@ -287,6 +292,7 @@ public class MapperListener extends LifecycleMBeanBase
         }
 
         if(found) {
+            // 设置mapper的默认host
             mapper.setDefaultHostName(defaultHost);
         } else {
             log.warn(sm.getString("mapperListener.unknownDefaultHost",
@@ -299,12 +305,14 @@ public class MapperListener extends LifecycleMBeanBase
      * Register host.
      */
     private void registerHost(Host host) {
-
+        // host的别名
         String[] aliases = host.findAliases();
+        // 添加host映射
         mapper.addHost(host.getName(), aliases, host);
-
+        // 遍历host的context
         for (Container container : host.findChildren()) {
             if (container.getState().isAvailable()) {
+                // 注册context
                 registerContext((Context) container);
             }
         }
@@ -363,17 +371,20 @@ public class MapperListener extends LifecycleMBeanBase
      * Register context.
      */
     private void registerContext(Context context) {
-
+        // 获取context的path
         String contextPath = context.getPath();
+        // contextPath为"/"表示根路径
         if ("/".equals(contextPath)) {
             contextPath = "";
         }
         Host host = (Host)context.getParent();
-
+        // 获取web应用的资源
         WebResourceRoot resources = context.getResources();
+        //获取context的首页
         String[] welcomeFiles = context.findWelcomeFiles();
+        // wrapper映射list
         List<WrapperMappingInfo> wrappers = new ArrayList<>();
-
+        // 遍历Wrapper，创建WrapperMappingInfo对象添加到wrappers，封装了servlet的映射等信息
         for (Container container : context.findChildren()) {
             prepareWrapperMappingInfo(context, (Wrapper) container, wrappers);
 
@@ -382,7 +393,7 @@ public class MapperListener extends LifecycleMBeanBase
                         container.getName(), contextPath, service));
             }
         }
-
+        // 添加Context映射信息
         mapper.addContextVersion(host.getName(), host, contextPath,
                 context.getWebappVersion(), context, welcomeFiles, resources,
                 wrappers);
@@ -451,6 +462,7 @@ public class MapperListener extends LifecycleMBeanBase
     /**
      * Populate <code>wrappers</code> list with information for registration of
      * mappings for this wrapper in this context.
+     * 创建wrapper映射对象，添加到指定的wrappers
      *
      * @param context
      * @param wrapper
@@ -458,9 +470,12 @@ public class MapperListener extends LifecycleMBeanBase
      */
     private void prepareWrapperMappingInfo(Context context, Wrapper wrapper,
             List<WrapperMappingInfo> wrappers) {
+        // 获取servletName
         String wrapperName = wrapper.getName();
         boolean resourceOnly = context.isResourceOnlyServlet(wrapperName);
+        // 获取servlet映射
         String[] mappings = wrapper.findMappings();
+        // 遍历servlet映射，创建WrapperMappingInfo对象，保存了servlet映射信息
         for (String mapping : mappings) {
             boolean jspWildCard = (wrapperName.equals("jsp")
                                    && mapping.endsWith("/*"));
@@ -505,6 +520,7 @@ public class MapperListener extends LifecycleMBeanBase
 
     /**
      * Add this mapper to the container and all child containers
+     * // 添加当前MapperListener到指定容器和其子容器
      *
      * @param container
      */

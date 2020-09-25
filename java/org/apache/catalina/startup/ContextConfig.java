@@ -1442,7 +1442,7 @@ public class ContextConfig implements LifecycleListener {
         }
 
         // Context doesn't use version directly
-
+        // 添加welcome-file-list配置
         for (String welcomeFile : webxml.getWelcomeFiles()) {
             /*
              * The following will result in a welcome file of "" so don't add

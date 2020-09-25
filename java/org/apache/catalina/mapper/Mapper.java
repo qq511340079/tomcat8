@@ -95,6 +95,7 @@ public final class Mapper {
 
     /**
      * Add a new host to the mapper.
+     * 添加host映射
      *
      * @param name Virtual host name
      * @param aliases Alias names for the virtual host
@@ -102,18 +103,24 @@ public final class Mapper {
      */
     public synchronized void addHost(String name, String[] aliases,
                                      Host host) {
+        //hostName通配符重命名
         name = renameWildcardHost(name);
         MappedHost[] newHosts = new MappedHost[hosts.length + 1];
+        // 创建MappedHost对象，表示host映射
         MappedHost newHost = new MappedHost(name, host);
+        // 插入host映射
         if (insertMap(hosts, newHosts, newHost)) {
             hosts = newHosts;
             if (newHost.name.equals(defaultHostName)) {
+                // 设置默认host
                 defaultHost = newHost;
             }
             if (log.isDebugEnabled()) {
                 log.debug(sm.getString("mapper.addHost.success", name));
             }
         } else {
+            // 插入host映射失败，有重复的
+            // 重复的host映射
             MappedHost duplicate = hosts[find(hosts, name)];
             if (duplicate.object == host) {
                 // The host is already registered in the mapper.
@@ -130,6 +137,7 @@ public final class Mapper {
                 return;
             }
         }
+        // 添加host映射的别名
         List<MappedHost> newAliases = new ArrayList<>(aliases.length);
         for (String alias : aliases) {
             alias = renameWildcardHost(alias);
@@ -236,6 +244,7 @@ public final class Mapper {
     /**
      * Replace {@link MappedHost#contextList} field in <code>realHost</code> and
      * all its aliases with a new value.
+     * // 替换host映射和别名host映射的contextList字段
      */
     private void updateContextList(MappedHost realHost,
             ContextList newContextList) {
@@ -261,9 +270,9 @@ public final class Mapper {
     public void addContextVersion(String hostName, Host host, String path,
             String version, Context context, String[] welcomeResources,
             WebResourceRoot resources, Collection<WrapperMappingInfo> wrappers) {
-
+        // 处理hostName的通配符
         hostName = renameWildcardHost(hostName);
-
+        // 获取host映射对象
         MappedHost mappedHost  = exactFind(hosts, hostName);
         if (mappedHost == null) {
             addHost(hostName, new String[0], host);
@@ -277,27 +286,40 @@ public final class Mapper {
             log.error("No host found: " + hostName);
             return;
         }
+        // 获取path中有多少"/"
         int slashCount = slashCount(path);
         synchronized (mappedHost) {
+            // 创建ContextVersion对象
             ContextVersion newContextVersion = new ContextVersion(version,
                     path, slashCount, context, resources, welcomeResources);
             if (wrappers != null) {
+                // 添加wrapper
                 addWrappers(newContextVersion, wrappers);
             }
-
+            // 获取host的contextList
             ContextList contextList = mappedHost.contextList;
+            // 通过path查找MappedContext
             MappedContext mappedContext = exactFind(contextList.contexts, path);
+            // 如果当前context的path没有被映射过
             if (mappedContext == null) {
+                // 创建MappedContext实例，保存了context的映射信息
                 mappedContext = new MappedContext(path, newContextVersion);
+                // 添加context映射信息到contextList
                 ContextList newContextList = contextList.addContext(
                         mappedContext, slashCount);
                 if (newContextList != null) {
+                    // 更新host的contextList
                     updateContextList(mappedHost, newContextList);
+                    // 添加Context和ContextVersion映射
                     contextObjectToContextVersionMap.put(context, newContextVersion);
                 }
             } else {
+                // 当前context已经存在映射信息
+
+                // 获取之前mappedContext的ContextVersion数组
                 ContextVersion[] contextVersions = mappedContext.versions;
                 ContextVersion[] newContextVersions = new ContextVersion[contextVersions.length + 1];
+                // 添加到mappedContext的ContextVersion数组，context版本不同则可以添加成功
                 if (insertMap(contextVersions, newContextVersions,
                         newContextVersion)) {
                     mappedContext.versions = newContextVersions;
@@ -305,6 +327,7 @@ public final class Mapper {
                 } else {
                     // Re-registration after Context.reload()
                     // Replace ContextVersion with the new one
+                    // context的版本相同，替换原来的ContextVersions，Context.reload方法重新注册ContextVersion
                     int pos = find(contextVersions, version);
                     if (pos >= 0 && contextVersions[pos].name.equals(version)) {
                         contextVersions[pos] = newContextVersion;
@@ -436,7 +459,7 @@ public final class Mapper {
 
     /**
      * Adds wrappers to the given context.
-     *
+     * 添加wrapper到给定的context
      * @param contextVersion The context to which to add the wrappers
      * @param wrappers Information on wrapper mappings
      */
@@ -466,36 +489,51 @@ public final class Mapper {
         synchronized (context) {
             if (path.endsWith("/*")) {
                 // Wildcard wrapper
+                // servlet映射为通配符
+                // 获取servlet映射通配符前的路径
                 String name = path.substring(0, path.length() - 2);
+                // 创建MappedWrapper，封装wrapper映射信息
                 MappedWrapper newWrapper = new MappedWrapper(name, wrapper,
                         jspWildCard, resourceOnly);
                 MappedWrapper[] oldWrappers = context.wildcardWrappers;
                 MappedWrapper[] newWrappers = new MappedWrapper[oldWrappers.length + 1];
+                // 添加wrapper映射信息到wildcardWrappers
                 if (insertMap(oldWrappers, newWrappers, newWrapper)) {
                     context.wildcardWrappers = newWrappers;
+                    //获取wrapper映射的路径有几个"/"
                     int slashCount = slashCount(newWrapper.name);
                     if (slashCount > context.nesting) {
+                        // 更新context路径的最大嵌套层级
                         context.nesting = slashCount;
                     }
                 }
             } else if (path.startsWith("*.")) {
                 // Extension wrapper
+                // servlet映射为扩展名
+
+                // 获取servlet映射通配符后的路径
                 String name = path.substring(2);
                 MappedWrapper newWrapper = new MappedWrapper(name, wrapper,
                         jspWildCard, resourceOnly);
                 MappedWrapper[] oldWrappers = context.extensionWrappers;
                 MappedWrapper[] newWrappers =
                     new MappedWrapper[oldWrappers.length + 1];
+                // 添加wrapper映射信息到extensionWrappers
                 if (insertMap(oldWrappers, newWrappers, newWrapper)) {
                     context.extensionWrappers = newWrappers;
                 }
             } else if (path.equals("/")) {
                 // Default wrapper
+                // 默认的wrapper
+
+                // 添加wrapper映射信息到默认的wrapper
                 MappedWrapper newWrapper = new MappedWrapper("", wrapper,
                         jspWildCard, resourceOnly);
                 context.defaultWrapper = newWrapper;
             } else {
                 // Exact wrapper
+                // servlet映射为具体路径
+
                 final String name;
                 if (path.length() == 0) {
                     // Special case for the Context Root mapping which is
@@ -504,10 +542,12 @@ public final class Mapper {
                 } else {
                     name = path;
                 }
+
                 MappedWrapper newWrapper = new MappedWrapper(name, wrapper,
                         jspWildCard, resourceOnly);
                 MappedWrapper[] oldWrappers = context.exactWrappers;
                 MappedWrapper[] newWrappers = new MappedWrapper[oldWrappers.length + 1];
+                // 添加wrapper映射信息到exactWrappers
                 if (insertMap(oldWrappers, newWrappers, newWrapper)) {
                     context.exactWrappers = newWrappers;
                 }
@@ -1501,6 +1541,7 @@ public final class Mapper {
 
     /**
      * Return the slash count in a given string.
+     * 返回给定的字符串name中有多少个"/"
      */
     private static final int slashCount(String name) {
         int pos = -1;
@@ -1515,19 +1556,25 @@ public final class Mapper {
     /**
      * Insert into the right place in a sorted MapElement array, and prevent
      * duplicates.
+     *
+     * 将新的host映射添加到host映射数组的正确的位置，并且host防止重复
      */
     private static final <T> boolean insertMap
         (MapElement<T>[] oldMap, MapElement<T>[] newMap, MapElement<T> newElement) {
+        // 寻找新的host映射在host映射数组中的位置，-1表示没有找到
         int pos = find(oldMap, newElement.name);
+        // 原来的host的name和新的hostname相同则不添加
         if ((pos != -1) && (newElement.name.equals(oldMap[pos].name))) {
             return false;
         }
+        // 将新的host映射插入新的host映射数组
         System.arraycopy(oldMap, 0, newMap, 0, pos + 1);
         newMap[pos + 1] = newElement;
         System.arraycopy
             (oldMap, pos + 1, newMap, pos + 2, oldMap.length - pos - 1);
         return true;
     }
+
 
 
     /**
@@ -1710,9 +1757,13 @@ public final class Mapper {
         public final int slashCount;
         public final WebResourceRoot resources;
         public String[] welcomeResources;
+        // 默认的wrapper
         public MappedWrapper defaultWrapper = null;
+        // 映射到具体路径的wrapper，比如/a
         public MappedWrapper[] exactWrappers = new MappedWrapper[0];
+        // 通配符映射的wrapper，比如/*
         public MappedWrapper[] wildcardWrappers = new MappedWrapper[0];
+        // 拓展名映射的wrapper， 比如*.do
         public MappedWrapper[] extensionWrappers = new MappedWrapper[0];
         public int nesting = 0;
         private volatile boolean paused;
