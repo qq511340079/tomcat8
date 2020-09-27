@@ -662,9 +662,11 @@ public class Http11Processor extends AbstractProcessor {
     public SocketState service(SocketWrapperBase<?> socketWrapper)
         throws IOException {
         RequestInfo rp = request.getRequestProcessor();
+        // 设置请求处理阶段为解析阶段
         rp.setStage(org.apache.coyote.Constants.STAGE_PARSE);
 
         // Setting up the I/O
+        // 设置Processor使用的SocketWrapper
         setSocketWrapper(socketWrapper);
         inputBuffer.init(socketWrapper);
         outputBuffer.init(socketWrapper);

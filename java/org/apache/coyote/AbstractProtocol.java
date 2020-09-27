@@ -589,7 +589,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         if (getLog().isInfoEnabled()) {
             getLog().info(sm.getString("abstractProtocolHandler.start", getName()));
         }
-
+        // 启动endpoint
         endpoint.start();
 
         // Start async timeout thread
@@ -683,6 +683,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         private final RequestGroupInfo global = new RequestGroupInfo();
         private final AtomicLong registerCount = new AtomicLong(0);
         private final Map<S,Processor> connections = new ConcurrentHashMap<>();
+        // Processor缓存，避免gc
         private final RecycledProcessors recycledProcessors = new RecycledProcessors(this);
 
         public ConnectionHandler(AbstractProtocol<S> proto) {
@@ -716,11 +717,12 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
             }
             if (wrapper == null) {
                 // Nothing to do. Socket has been closed.
+                // wrapper为null，关闭连接
                 return SocketState.CLOSED;
             }
 
             S socket = wrapper.getSocket();
-
+            // 获取客户端socket的Processor
             Processor processor = connections.get(socket);
             if (getLog().isDebugEnabled()) {
                 getLog().debug(sm.getString("abstractConnectionHandler.connectionsGet",
@@ -731,6 +733,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
             // dispatched. Because of delays in the dispatch process, the
             // timeout may no longer be required. Check here and avoid
             // unnecessary processing.
+            // 异步超时是在专用线程上计算的，然后分派。 由于调度过程中的延迟，可能不再需要超时。 检查此处，避免不必要的处理。
             if (SocketEvent.TIMEOUT == status && (processor == null ||
                     !processor.isAsync() || !processor.checkAsyncTimeoutGeneration())) {
                 // This is effectively a NO-OP
@@ -745,11 +748,12 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                 // longer a processor associated with this socket.
                 return SocketState.CLOSED;
             }
-
+            // 标记容器分配用来处理连接数据的线程
             ContainerThreadMarker.set();
 
             try {
                 if (processor == null) {
+                    // 协商协议
                     String negotiatedProtocol = wrapper.getNegotiatedProtocol();
                     // OpenSSL typically returns null whereas JSSE typically
                     // returns "" when no protocol is negotiated
@@ -787,6 +791,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                         }
                     }
                 }
+                // 连接没有对应的处理器，尝试从缓存中获取一个
                 if (processor == null) {
                     processor = recycledProcessors.pop();
                     if (getLog().isDebugEnabled()) {
@@ -795,6 +800,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                     }
                 }
                 if (processor == null) {
+                    // 创建一个新的Processor
                     processor = getProtocol().createProcessor();
                     register(processor);
                 }
@@ -803,6 +809,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                         wrapper.getSslSupport(getProtocol().getClientCertProvider()));
 
                 // Associate the processor with the connection
+                // 关联socket和Processor
                 connections.put(socket, processor);
 
                 SocketState state = SocketState.CLOSED;

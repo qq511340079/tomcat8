@@ -16,6 +16,8 @@
  */
 package org.apache.tomcat.util.collections;
 
+import java.util.Arrays;
+
 /**
  * This is intended as a (mostly) GC-free alternative to
  * {@link java.util.concurrent.ConcurrentLinkedQueue} when the requirement is to

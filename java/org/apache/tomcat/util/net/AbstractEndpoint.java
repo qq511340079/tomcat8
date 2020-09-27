@@ -167,6 +167,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * Are we using an internal executor
+     * 是否使用内部线程池
      */
     protected volatile boolean internalExecutor = true;
 
@@ -191,6 +192,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * Cache for SocketProcessor objects
+     * 缓存SocketProcessorBase对象，避免gc
      */
     protected SynchronizedStack<SocketProcessorBase<S>> processorCache;
 
@@ -477,6 +479,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * External Executor based thread pool.
+     * 内部线程池
      */
     private Executor executor = null;
     public void setExecutor(Executor executor) {
@@ -665,6 +668,12 @@ public abstract class AbstractEndpoint<S> {
             ((java.util.concurrent.ThreadPoolExecutor) executor).setMaximumPoolSize(maxThreads);
         }
     }
+
+    /**
+     * 获得最大线程数
+     *
+     * @return
+     */
     public int getMaxThreads() {
         if (internalExecutor) {
             return maxThreads;
@@ -877,6 +886,7 @@ public abstract class AbstractEndpoint<S> {
 
 
     public void createExecutor() {
+        // 创建内部线程池
         internalExecutor = true;
         TaskQueue taskqueue = new TaskQueue();
         TaskThreadFactory tf = new TaskThreadFactory(getName() + "-exec-", daemon, getThreadPriority());
@@ -1056,16 +1066,22 @@ public abstract class AbstractEndpoint<S> {
             if (socketWrapper == null) {
                 return false;
             }
+            // 从缓存中获取SocketProcessorBase
             SocketProcessorBase<S> sc = processorCache.pop();
             if (sc == null) {
+                // 缓存中没有则创建一个新的SocketProcessorBase
                 sc = createSocketProcessor(socketWrapper, event);
             } else {
+                // 重置缓存的SocketProcessorBase
                 sc.reset(socketWrapper, event);
             }
+            // 获取线程池
             Executor executor = getExecutor();
             if (dispatch && executor != null) {
+                // 使用线程池执行SocketProcessorBase
                 executor.execute(sc);
             } else {
+                //在当前线程执行SocketProcessorBase
                 sc.run();
             }
         } catch (RejectedExecutionException ree) {
@@ -1252,6 +1268,7 @@ public abstract class AbstractEndpoint<S> {
     protected abstract Log getLog();
 
     protected LimitLatch initializeConnectionLatch() {
+        // 创建限制最大连接数的LimitLatch实例
         if (maxConnections==-1) return null;
         if (connectionLimitLatch==null) {
             connectionLimitLatch = new LimitLatch(getMaxConnections());
@@ -1289,6 +1306,8 @@ public abstract class AbstractEndpoint<S> {
      * will consume CPU and may also trigger large amounts of logging. For
      * example, this can happen with the Acceptor thread if the ulimit for open
      * files is reached.
+     * 为子类提供一种通用的方法来处理需要延迟以防止线程进入紧密循环的异常，这种紧密循环将消耗CPU并可能触发大量日志记录。
+     * 例如，如果达到了打开文件的ulimit，则使用Acceptor线程会发生这种情况。
      *
      * @param currentErrorDelay The current delay being applied on failure
      * @return  The delay to apply on the next failure
