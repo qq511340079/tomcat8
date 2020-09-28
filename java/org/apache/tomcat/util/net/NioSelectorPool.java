@@ -57,6 +57,7 @@ public class NioSelectorPool {
     protected boolean enabled = true;
     protected AtomicInteger active = new AtomicInteger(0);
     protected AtomicInteger spare = new AtomicInteger(0);
+    // Selector缓存队列，缓存不用的Selector，避免gc
     protected ConcurrentLinkedQueue<Selector> selectors =
             new ConcurrentLinkedQueue<>();
 
@@ -236,16 +237,21 @@ public class NioSelectorPool {
      */
     public int read(ByteBuffer buf, NioChannel socket, Selector selector, long readTimeout, boolean block) throws IOException {
         if ( SHARED && block ) {
+            // 阻塞方式读取数据
             return blockingSelector.read(buf,socket,readTimeout);
         }
         SelectionKey key = null;
+        // 总共读取的字节数
         int read = 0;
         boolean timedout = false;
+        // 是否可以读取
         int keycount = 1; //assume we can write
         long time = System.currentTimeMillis(); //start the timeout timer
         try {
             while ( (!timedout) ) {
+                // 读取的字节数
                 int cnt = 0;
+                // 仅当注册了NIO读事件才可以读取
                 if ( keycount > 0 ) { //only read if we were registered for a read
                     cnt = socket.read(buf);
                     if (cnt == -1) {
@@ -255,21 +261,29 @@ public class NioSelectorPool {
                         break;
                     }
                     read += cnt;
+                    // 读取到了数据
                     if (cnt > 0) continue; //read some more
+                    // 数据读取完了
                     if (cnt==0 && (read>0 || (!block) ) ) break; //we are done reading
                 }
+                // 如果selector为null，while会忙循环，占用cpu资源
                 if ( selector != null ) {//perform a blocking read
                     //register OP_WRITE to the selector
+                    // 注册NIO读事件
                     if (key==null) key = socket.getIOChannel().register(selector, SelectionKey.OP_READ);
                     else key.interestOps(SelectionKey.OP_READ);
+                    // 判断读取数据是否超时
                     if (readTimeout==0) {
                         timedout = (read==0);
                     } else if (readTimeout<0) {
+                        // 当前线程阻塞等待有可读数据
                         keycount = selector.select();
                     } else {
+                        // 当前线程阻塞等待有可读数据，超时时间为readTimeout
                         keycount = selector.select(readTimeout);
                     }
                 }
+                // 判断读取数据是否超时
                 if (readTimeout > 0 && (selector == null || keycount == 0) ) timedout = (System.currentTimeMillis()-time)>=readTimeout;
             }//while
             if ( timedout ) throw new SocketTimeoutException();

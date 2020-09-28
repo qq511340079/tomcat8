@@ -310,7 +310,9 @@ public abstract class SocketWrapperBase<E> {
     protected int populateReadBuffer(ByteBuffer to) {
         // Is there enough data in the read buffer to satisfy this request?
         // Copy what data there is in the read buffer to the byte array
+        // 设置readBuffer为读模式
         socketBufferHandler.configureReadBufferForRead();
+        // 将readBuffer数据写入指定的ByteBuffer
         int nRead = transfer(socketBufferHandler.getReadBuffer(), to);
 
         if (log.isDebugEnabled()) {

@@ -1255,8 +1255,10 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
 
         @Override
         public int read(boolean block, ByteBuffer to) throws IOException {
+            // 将readBuffer中剩余的数据写入指定的ByteBuffer
             int nRead = populateReadBuffer(to);
             if (nRead > 0) {
+                // readBuffer中的数据可能一次没有读取完，所以从readBuffer读取成功后直接返回
                 return nRead;
                 /*
                  * Since more bytes may have arrived since the buffer was last
@@ -1268,25 +1270,35 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
             }
 
             // The socket read buffer capacity is socket.appReadBufSize
+            // 获取readBuffer的容量，通过SocketProperties.appReadBufSize配置
             int limit = socketBufferHandler.getReadBuffer().capacity();
+            // 如果目标ByteBuffer剩余大小大于等于readBuffer的容量，则直接读取到目标ByteBuffer
             if (to.remaining() >= limit) {
+                // 设置目标ByteBuffer的limit
                 to.limit(to.position() + limit);
+                // 直接从socket读取数据到目标ByteBuffer
                 nRead = fillReadBuffer(block, to);
                 if (log.isDebugEnabled()) {
                     log.debug("Socket: [" + this + "], Read direct from socket: [" + nRead + "]");
                 }
+                // 更新最后一次读取数据的时间
                 updateLastRead();
             } else {
                 // Fill the read buffer as best we can.
+                // 指定的ByteBuffer剩余空间没有readBuffer的空间大，则先将数据从socket读取到readBuffer再从readBuffer读取到指定ByteBuffer
+
+                // 先将数据从socket读取到readBuffer
                 nRead = fillReadBuffer(block);
                 if (log.isDebugEnabled()) {
                     log.debug("Socket: [" + this + "], Read into buffer: [" + nRead + "]");
                 }
+                // 更新最后一次读取数据的时间
                 updateLastRead();
 
                 // Fill as much of the remaining byte array as possible with the
                 // data that was just read
                 if (nRead > 0) {
+                    // 从socket读取到了数据，将readBuffer中的数据读取到指定的ByteBuffer
                     nRead = populateReadBuffer(to);
                 }
             }
@@ -1316,8 +1328,11 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
             int nRead;
             NioChannel channel = getSocket();
             if (block) {
+                // 阻塞读取数据
+
                 Selector selector = null;
                 try {
+                    // 从NioSelectorPool中获取Selector
                     selector = pool.get();
                 } catch (IOException x) {
                     // Ignore
@@ -1328,6 +1343,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                     if (att == null) {
                         throw new IOException("Key must be cancelled.");
                     }
+                    // 阻塞读取数据
                     nRead = pool.read(to, channel, selector, att.getReadTimeout());
                 } finally {
                     if (selector != null) {
@@ -1335,6 +1351,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                     }
                 }
             } else {
+                // 非阻塞读取数据
                 nRead = channel.read(to);
                 if (nRead == -1) {
                     throw new EOFException();

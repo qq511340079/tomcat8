@@ -68,6 +68,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
 
     /**
      * State.
+     * 解析http请求头
      */
     private boolean parsingHeader;
 
@@ -126,6 +127,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
      * Parsing state - used for non blocking parsing so that
      * when more data arrives, we can pick up where we left off.
      */
+    // 是否正在解析请求行
     private boolean parsingRequestLine;
     private int parsingRequestLinePhase = 0;
     private boolean parsingRequestLineEol = false;
@@ -338,6 +340,11 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
      * Read the request line. This function is meant to be used during the
      * HTTP request header parsing. Do NOT attempt to read the request body
      * using it.
+     * 解析HTTP请求行
+     * 请求行格式如下：
+     * ========================================
+     * 请求方法 空格 URL 空格 协议版本 回车换行
+     * =======================================
      *
      * @throws IOException If an exception occurs during the underlying socket
      * read operations, or if the given buffer is not big enough to accommodate
@@ -348,6 +355,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
     boolean parseRequestLine(boolean keptAlive) throws IOException {
 
         // check state
+        // 检查解析状态
         if (!parsingRequestLine) {
             return true;
         }
@@ -359,6 +367,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
             do {
 
                 // Read new bytes if needed
+                // 需要读取新的字节
                 if (byteBuffer.position() >= byteBuffer.limit()) {
                     if (keptAlive) {
                         // Haven't read any request data yet so use the keep-alive
@@ -711,6 +720,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
 
     /**
      * Attempts to read some data into the input buffer.
+     * 尝试读取数据到inputBuffer
      *
      * @return <code>true</code> if more data was added to the input buffer
      *         otherwise <code>false</code>
@@ -733,7 +743,9 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
         if (byteBuffer.position() < byteBuffer.limit()) {
             byteBuffer.position(byteBuffer.limit());
         }
+        // 设置buffer的limit等于capacity
         byteBuffer.limit(byteBuffer.capacity());
+        // 读取数据
         int nRead = wrapper.read(block, byteBuffer);
         byteBuffer.limit(byteBuffer.position()).reset();
         if (nRead > 0) {
@@ -745,7 +757,6 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
         }
 
     }
-
 
     /**
      * Parse an HTTP header.

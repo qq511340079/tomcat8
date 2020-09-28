@@ -43,6 +43,7 @@ public class NioBlockingSelector {
 
     private static int threadCounter = 0;
 
+    // KeyReference缓存，避免gc
     private final SynchronizedStack<KeyReference> keyReferenceStack =
             new SynchronizedStack<>();
 
@@ -147,6 +148,8 @@ public class NioBlockingSelector {
      * Performs a blocking read using the bytebuffer for data to be read
      * If the <code>selector</code> parameter is null, then it will perform a busy read that could
      * take up a lot of CPU cycles.
+     * 阻塞读取数据到指定的ByteBuffer
+     *
      * @param buf ByteBuffer - the buffer containing the data, we will read as until we have read at least one byte or we timed out
      * @param socket SocketChannel - the socket to write data to
      * @param readTimeout long - the timeout for this read operation in milliseconds, -1 means no timeout
@@ -158,29 +161,40 @@ public class NioBlockingSelector {
     public int read(ByteBuffer buf, NioChannel socket, long readTimeout) throws IOException {
         SelectionKey key = socket.getIOChannel().keyFor(socket.getPoller().getSelector());
         if ( key == null ) throw new IOException("Key no longer registered");
+        // 从缓存中获取KeyReference
         KeyReference reference = keyReferenceStack.pop();
         if (reference == null) {
+            // 创建新的KeyReference
             reference = new KeyReference();
         }
         NioSocketWrapper att = (NioSocketWrapper) key.attachment();
+        // 读取的字节数
         int read = 0;
+        // 是否读取超时
         boolean timedout = false;
+        // 是否可以读取，只有当注册了NIO读事件时才可以读取
         int keycount = 1; //assume we can read
         long time = System.currentTimeMillis(); //start the timeout timer
         try {
             while(!timedout) {
+                // 只有当注册了NIO读事件时才可以读取
                 if (keycount > 0) { //only read if we were registered for a read
                     read = socket.read(buf);
                     if (read != 0) {
+                        // 读取到数据，跳出while循环
                         break;
                     }
                 }
                 try {
+                    // 如果readLatch为null或者readLatch的count等于0则创建readLatch
                     if ( att.getReadLatch()==null || att.getReadLatch().getCount()==0) att.startReadLatch(1);
+                    // 通过轮询线程注册NIO读事件
                     poller.add(att,SelectionKey.OP_READ, reference);
                     if (readTimeout < 0) {
+                        // readTimeout小于0，当前线程阻塞在readLatch直到被唤醒
                         att.awaitReadLatch(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
                     } else {
+                        // readTimeout大于0，当前线程阻塞在readLatch直到超时或者被唤醒
                         att.awaitReadLatch(readTimeout, TimeUnit.MILLISECONDS);
                     }
                 } catch (InterruptedException ignore) {
@@ -188,23 +202,31 @@ public class NioBlockingSelector {
                 }
                 if ( att.getReadLatch()!=null && att.getReadLatch().getCount()> 0) {
                     //we got interrupted, but we haven't received notification from the poller.
+                    // 当前线程被中断，没有被轮询线程唤醒
                     keycount = 0;
                 }else {
                     //latch countdown has happened
+                    // 当前线程通过readLatch的countdown方法被唤醒
                     keycount = 1;
+                    // 重置readLatch为null
                     att.resetReadLatch();
                 }
+                // 判断是否读取超时
                 if (readTimeout >= 0 && (keycount == 0))
                     timedout = (System.currentTimeMillis() - time) >= readTimeout;
             } //while
             if (timedout)
                 throw new SocketTimeoutException();
         } finally {
+            // 取消注册的NIO读事件
             poller.remove(att,SelectionKey.OP_READ);
             if (timedout && reference.key!=null) {
+                // 取消SelectionKey
                 poller.cancelKey(reference.key);
             }
+            // 释放SelectionKey
             reference.key = null;
+            // 放入KeyReference缓存
             keyReferenceStack.push(reference);
         }
         return read;
@@ -242,9 +264,11 @@ public class NioBlockingSelector {
             NioChannel nch = key.getSocket();
             final SocketChannel ch = nch.getIOChannel();
             if ( ch == null ) return;
-
+            // 创建RunnableAdd对象，注册或取消NIO事件
             Runnable r = new RunnableAdd(ch, key, ops, ref);
+            // 放入事件队列
             events.offer(r);
+            // 唤醒轮询线程
             wakeup();
         }
 
@@ -318,6 +342,7 @@ public class NioBlockingSelector {
 
                     // Walk through the collection of ready keys and dispatch
                     // any active event.
+                    // 遍历就绪的SelectionKey，唤醒阻塞在对应事件上的线程
                     while (run && iterator != null && iterator.hasNext()) {
                         SelectionKey sk = iterator.next();
                         NioSocketWrapper attachment = (NioSocketWrapper)sk.attachment();
@@ -325,9 +350,11 @@ public class NioBlockingSelector {
                             iterator.remove();
                             sk.interestOps(sk.interestOps() & (~sk.readyOps()));
                             if ( sk.isReadable() ) {
+                                // 唤醒阻塞在readLatch的线程
                                 countDown(attachment.getReadLatch());
                             }
                             if (sk.isWritable()) {
+                                // 唤醒阻塞在writeLatch的线程
                                 countDown(attachment.getWriteLatch());
                             }
                         }catch (CancelledKeyException ckx) {

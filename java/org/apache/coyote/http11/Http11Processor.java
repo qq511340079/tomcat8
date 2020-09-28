@@ -668,7 +668,9 @@ public class Http11Processor extends AbstractProcessor {
         // Setting up the I/O
         // 设置Processor使用的SocketWrapper
         setSocketWrapper(socketWrapper);
+        // 初始化输入缓冲区
         inputBuffer.init(socketWrapper);
+        // 初始化输出缓冲区
         outputBuffer.init(socketWrapper);
 
         // Flags
@@ -683,6 +685,7 @@ public class Http11Processor extends AbstractProcessor {
 
             // Parsing the request header
             try {
+                // 解析请求行
                 if (!inputBuffer.parseRequestLine(keptAlive)) {
                     if (inputBuffer.getParsingRequestLinePhase() == -1) {
                         return SocketState.UPGRADING;

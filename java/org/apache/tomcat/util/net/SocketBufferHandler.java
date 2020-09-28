@@ -22,6 +22,7 @@ import org.apache.tomcat.util.buf.ByteBufferUtils;
 
 public class SocketBufferHandler {
 
+    // readBuffer是否为写模式
     private volatile boolean readBufferConfiguredForWrite = true;
     private volatile ByteBuffer readBuffer;
 
@@ -47,17 +48,23 @@ public class SocketBufferHandler {
         setReadBufferConfiguredForWrite(true);
     }
 
-
+    /**
+     * 设置readBuffer为读模式
+     */
     public void configureReadBufferForRead() {
         setReadBufferConfiguredForWrite(false);
     }
 
-
+    /**
+     * 设置readBuffer的状态
+     * @param readBufferConFiguredForWrite 是否设置readBuffer为写模式
+     */
     private void setReadBufferConfiguredForWrite(boolean readBufferConFiguredForWrite) {
         // NO-OP if buffer is already in correct state
         if (this.readBufferConfiguredForWrite != readBufferConFiguredForWrite) {
             if (readBufferConFiguredForWrite) {
                 // Switching to write
+                // readBuffer切换到写模式
                 int remaining = readBuffer.remaining();
                 if (remaining == 0) {
                     readBuffer.clear();
@@ -66,6 +73,7 @@ public class SocketBufferHandler {
                 }
             } else {
                 // Switching to read
+                // readBuffer切换到读模式
                 readBuffer.flip();
             }
             this.readBufferConfiguredForWrite = readBufferConFiguredForWrite;
