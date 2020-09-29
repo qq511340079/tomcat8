@@ -727,7 +727,9 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
      */
     private boolean fill(boolean block) throws IOException {
 
+        // 是否是解析http请求头
         if (parsingHeader) {
+            // 校验http请求头大小是否超过headerBufferSize，默认8kb
             if (byteBuffer.limit() >= headerBufferSize) {
                 if (parsingRequestLine) {
                     // Avoid unknown protocol triggering an additional error
@@ -738,8 +740,10 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
         } else {
             byteBuffer.limit(end).position(end);
         }
-
+        // 标记byteBuffer，下面读取完数据后会reset
         byteBuffer.mark();
+        // byteBuffer的position小于limit，将position设置为limit的值
+        // limit记录了byteBuffer中最后一个有效字节的索引，这样下面读取的数据就会从limit后开始写入到byteBuffer了
         if (byteBuffer.position() < byteBuffer.limit()) {
             byteBuffer.position(byteBuffer.limit());
         }
@@ -747,8 +751,10 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
         byteBuffer.limit(byteBuffer.capacity());
         // 读取数据
         int nRead = wrapper.read(block, byteBuffer);
+        // 设置byteBuffer的limit为position，然后重置position为读取数据前位置
         byteBuffer.limit(byteBuffer.position()).reset();
         if (nRead > 0) {
+            // 读取到了数据，返回true
             return true;
         } else if (nRead == -1) {
             throw new EOFException(sm.getString("iib.eof.error"));
